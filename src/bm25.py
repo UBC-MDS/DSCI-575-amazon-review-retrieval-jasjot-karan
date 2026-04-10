@@ -173,7 +173,7 @@ def main(query: str, max_rows: int | None = None):
         corpus_path = CORPUS_PATH,
         tokenized_path = tokenized_path,
         metadata_path = metadata_path,
-        bm_25_path = bm25_path,
+        bm25_path = bm25_path,
         chunk_size = CHUNK_SIZE,
         max_rows = max_rows
     )
