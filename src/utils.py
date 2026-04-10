@@ -3,10 +3,10 @@ import os
 import numpy as np
 import polars as pl
 import pickle
-import polars as pl
 import math
 import gc
 from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS
+from tqdm import tqdm # for progress bar
 
 STOPWORDS = set(ENGLISH_STOP_WORDS)
 
@@ -38,9 +38,9 @@ def load_pickle_if_valid(path: str):
             return pickle.load(f)
         
     except (EOFError, pickle.UnpicklingError):
-        print(f"Corrupted pickle detected at {path}. Rebuilding...")
+        print(f"Pickle obj does not exist or corrupted pickle detected at {path}. Rebuilding...")
         os.remove(path)
-
+ 
 def save_pickle(obj, path: str) -> None:
     '''
     Saves object to pickle
@@ -61,30 +61,56 @@ def tokenize(text: str) -> list[str]:
     tokens = [t for t in tokens if t and t not in STOPWORDS]
     return tokens
 
-def load_texts_and_metadata_in_chunks(
+def polars_tokenize_expr(text_col: str = "retrieval_text") -> pl.Expr:
+    """
+    Return a Polars expression that tokenizes a text column into list[str] by removing symbols, punctuationm and stopwords.
+    Useful for vectorized and optimized corpus preprocessing in chunks instead of Python's per row interpretation and no optimizer.
+    Used below sources for help:
+
+        https://stackoverflow.com/questions/77202907/slow-performance-of-python-polars-in-applying-pl-element-filter
+        https://docs.pola.rs/api/python/stable/reference/expressions/api/polars.element.html
+        https://github.com/pola-rs/polars/issues/13772
+    """
+    return (
+        pl.col(text_col)
+        .fill_null("")
+        .str.to_lowercase()
+        .str.replace_all(r"[^a-z0-9\s-]", " ")
+        .str.split(" ")
+        .list.eval(
+            pl.element().filter(
+                (pl.element() != "") &
+                (~pl.element().is_in(STOPWORDS))
+            )
+        )
+        .alias("tokens")
+    )
+
+def load_tokenized_corpus_and_metadata_in_chunks(
     corpus_path: str,
     metadata_cols: list[str],
     chunk_size: int,
     max_rows: int | None = None
 ) -> tuple[list[list[str]], list[dict]]:
     '''
-    Returns retrieval text (for BM25 search and embeddings) and metadata rows in chunks
+    Loads retrieval text and metadata from parquet in chunks, tokenizes the text,
+    and returns the full tokenized corpus plus metadata rows
     '''
-    print(f"Loading retrival text and metadata rows from: {corpus_path}")
+    print(f"Loading and tokenizing retrieval text from: {corpus_path}")
 
     total_rows = get_total_rows(corpus_path, max_rows = max_rows)
     num_chunks = math.ceil(total_rows / chunk_size)
 
-    texts: list[str] = []
+    tokenized_corpus: list[list[str]] = []
     metadata_rows: list[dict] = []
 
     corpus_lf = pl.scan_parquet(corpus_path).slice(0, total_rows)
 
     chunk_lf = corpus_lf.select(
-        [pl.col("retrieval_text")] + [pl.col(col) for col in metadata_cols]
+        [polars_tokenize_expr("retrieval_text")] + [pl.col(col) for col in metadata_cols]
     )
 
-    for chunk_idx in range(num_chunks):
+    for chunk_idx in tqdm(range(num_chunks), desc = "Tokenizing chunks", unit = "chunk"):
         offset = chunk_idx * chunk_size 
 
         # slice out the current block/chunk we are at
@@ -95,15 +121,15 @@ def load_texts_and_metadata_in_chunks(
         )
 
         # add the current chunk's tokens and metadata to our existing tokenized_corpus and metadata_rows 
-        texts.extend(chunk_df["retrieval_text"].to_list())
+        tokenized_corpus.extend(chunk_df["tokens"].to_list())
 
-        # turns chunk into a list of dictionaries and add each dict to metadata_rows
+        # turns chunk into a list of dictionaries and add each dict to metadata_rows on a new line, preserving the index
         metadata_rows.extend(chunk_df.select(metadata_cols).to_dicts())
                              
         print(f"Processed chunk {chunk_idx + 1}/{num_chunks}")
 
         # free that chunnk df object from memory after we have added it to the tokenized_corpus so memory does not keep growing chunk by chunk
         del chunk_df
-        gc.collect() 
+        gc.collect()
 
-    return texts, metadata_rows
+    return tokenized_corpus, metadata_rows

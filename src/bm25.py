@@ -4,7 +4,7 @@ Following docs were used for help: https://docs.langchain.com/oss/python/integra
 '''
 import numpy as np
 from rank_bm25 import BM25Okapi
-from utils import tokenize, get_total_rows, load_pickle_if_valid, save_pickle, load_texts_and_metadata_in_chunks
+from utils import tokenize, get_total_rows, load_pickle_if_valid, save_pickle, load_tokenized_corpus_and_metadata_in_chunks
 
 DATA_DIR = "../data/processed"
 TOKENIZED_PATH = f"{DATA_DIR}/tokenized_corpus.pkl"
@@ -29,15 +29,6 @@ META_COLS = [
     "all_review_titles",
 ]
 
-def build_tokenized_corpus(
-    texts: list[str]
-) -> list[list[str]]:
-    '''
-    Convert raw retrieval texts into tokenized corpus (nested list of strs) for BM25. 
-    '''
-    print("Tokenizing corpus for BM25...")
-    return [tokenize(text) for text in texts] # tokenize() returns a list[str], so return a list[list[str]] to match format BM25 expects
-
 def load_or_build_corpus_artifacts(
     corpus_path: str,
     tokenized_path: str = TOKENIZED_PATH,
@@ -57,14 +48,12 @@ def load_or_build_corpus_artifacts(
         return tokenized_corpus, metadata_rows
     
     # if not returned, they are not already built, so build the tokenized corpus and metadata rows
-    texts, metadata_rows = load_texts_and_metadata_in_chunks(
+    tokenized_corpus, metadata_rows = load_tokenized_corpus_and_metadata_in_chunks(
         corpus_path = corpus_path,
         metadata_cols = META_COLS,
         chunk_size = chunk_size,
         max_rows = max_rows
     )
-
-    tokenized_corpus = build_tokenized_corpus(texts)
 
     # save the built tokenized corpus and metadata rows
     save_pickle(tokenized_corpus, tokenized_path)
@@ -106,9 +95,9 @@ def bm25_search(query: str, bm25, metadata_rows: list[dict], top_k: int = 5) -> 
     """
     tokenized_query = tokenize(query)
     scores = bm25.get_scores(tokenized_query)
-    sorted_indices = np.argsort(scores)[::-1]
+    sorted_indices = np.argsort(scores)[::-1] # return the indices that would sort the array in descending order to get indices of highest scores in desc order
     top_k_indices = sorted_indices[:top_k]
-    return [(metadata_rows[i], scores[i]) for i in top_k_indices]
+    return [(metadata_rows[i], scores[i]) for i in top_k_indices] # returns ranked scores along with product metadata in descending order
 
 # driver program
 def main(query: str, max_rows: int | None = None):
@@ -166,5 +155,5 @@ def main(query: str, max_rows: int | None = None):
 
 if __name__ == "__main__":
     TEST_QUERY = "wireless noise cancelling headphones"
-    MAX_ROWS = 50_000
-    main(TEST_QUERY, max_rows = MAX_ROWS)
+    # MAX_ROWS = 50_000
+    main(TEST_QUERY)
