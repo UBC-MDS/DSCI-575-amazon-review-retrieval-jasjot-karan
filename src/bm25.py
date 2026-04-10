@@ -1,15 +1,10 @@
 '''
-Implemenets a BM25 keyoword based retreival system using LangChain
+Implements a BM25 keyoword based retreival system using LangChain
 Following docs were used for help: https://docs.langchain.com/oss/python/integrations/retrievers/bm25
 '''
-import gc
-import os
-import pickle
-import polars as pl
-import math
+import numpy as np
 from rank_bm25 import BM25Okapi
-
-from utils import polars_tokenize_expr, bm25_search
+from utils import tokenize, get_total_rows, load_pickle_if_valid, save_pickle, load_texts_and_metadata_in_chunks
 
 DATA_DIR = "../data/processed"
 TOKENIZED_PATH = f"{DATA_DIR}/tokenized_corpus.pkl"
@@ -34,87 +29,14 @@ META_COLS = [
     "all_review_titles",
 ]
 
-def get_total_rows(corpus_path: str, max_rows: int | None = None) -> int: 
-    """
-    Count rows lazily from the pqrquet file 
-    """
-    total_rows = (
-        pl.scan_parquet(corpus_path)
-        .select(pl.len())
-        .collect()
-        .item()
-    )
-
-    if max_rows is not None: 
-        return min(total_rows, max_rows)
-    
-    return total_rows
-
-def load_corpus_in_chunks(
-    corpus_path: str,
-    chunk_size: int = CHUNK_SIZE,
-    max_rows: int | None = None
-) -> tuple[list[list[str]], list[dict]]:
+def build_tokenized_corpus(
+    texts: list[str]
+) -> list[list[str]]:
     '''
-    Build tokenized corpus and metadata rows.
-    Returns tokenized corpus (nested list holding strs) and metadata rows (list of dicts)
+    Convert raw retrieval texts into tokenized corpus (nested list of strs) for BM25. 
     '''
-    print("Building tokenized corpus and metadata rows...")
-
-    total_rows = get_total_rows(corpus_path, max_rows = max_rows)
-    num_chunks = math.ceil(total_rows / chunk_size)
-
-    tokenized_corpus: list[list[str]] = [] # BM25 requires nested list
-    metadata_rows: list[dict] = []
-
-    corpus_lf = pl.scan_parquet(corpus_path).slice(0, total_rows)
-    chunk_lf = corpus_lf.select(
-        [polars_tokenize_expr("retrieval_text")] + [pl.col(col) for col in META_COLS]
-    )
-
-    for chunk_idx in range(num_chunks):
-        offset = chunk_idx * chunk_size 
-
-        # slice out the current block/chunk we are at
-        chunk_df = (
-            chunk_lf
-            .slice(offset, chunk_size)
-            .collect()
-        )
-
-        # add the current chunk's tokens and metadata to our existing tokenized_corpus and metadata_rows 
-        tokenized_corpus.extend(chunk_df["tokens"].to_list())
-        metadata_rows.extend(chunk_df.select(META_COLS).to_dicts())
-                             
-        print(f"Processed chunk {chunk_idx + 1}/{num_chunks}")
-
-        # free that chunnk df object from memory after we have added it to the tokenized_corpus so memory does not keep growing chunk by chunk
-        del chunk_df
-        gc.collect() 
-
-    return tokenized_corpus, metadata_rows
-
-def load_pickle_if_valid(path: str): 
-    '''
-    Load a pickle file if it exists and is not corrupted, otherwise it returns None.
-    '''
-    if not os.path.exists(path) or os.path.getsize(path) == 0:
-        return None
-    
-    try:
-        with open(path, "rb") as f:
-            return pickle.load(f)
-        
-    except (EOFError, pickle.UnpicklingError):
-        print(f"Corrupted pickle detected at {path}. Rebuilding...")
-        os.remove(path)
-
-def save_pickle(obj, path: str) -> None:
-    '''
-    Saves object to pickle
-    '''
-    with open(path, "wb") as f:
-        pickle.dump(obj, f)
+    print("Tokenizing corpus for BM25...")
+    return [tokenize(text) for text in texts] # tokenize() returns a list[str], so return a list[list[str]] to match format BM25 expects
 
 def load_or_build_corpus_artifacts(
     corpus_path: str,
@@ -124,7 +46,8 @@ def load_or_build_corpus_artifacts(
     max_rows: int | None = None
 ) -> tuple[list[list[str]], list[dict]]:
     '''
-    Load tokenized corpus and metadata rows if they already exist. Else, build both by chunking.
+    Load tokenized corpus and metadata rows if they already exist. 
+    Else, load the raw texts and metadata rows, tokenize texts for BM25 and save both
     '''
     tokenized_corpus = load_pickle_if_valid(tokenized_path)
     metadata_rows = load_pickle_if_valid(metadata_path)
@@ -134,11 +57,14 @@ def load_or_build_corpus_artifacts(
         return tokenized_corpus, metadata_rows
     
     # if not returned, they are not already built, so build the tokenized corpus and metadata rows
-    tokenized_corpus, metadata_rows = load_corpus_in_chunks(
+    texts, metadata_rows = load_texts_and_metadata_in_chunks(
         corpus_path = corpus_path,
+        metadata_cols = META_COLS,
         chunk_size = chunk_size,
         max_rows = max_rows
     )
+
+    tokenized_corpus = build_tokenized_corpus(texts)
 
     # save the built tokenized corpus and metadata rows
     save_pickle(tokenized_corpus, tokenized_path)
@@ -173,23 +99,16 @@ def load_or_build_bm25(
 
     return bm25
 
-def run_bm25_query(
-    query: str,
-    bm25,
-    metadata_rows: list[dict],
-    top_k: int = 5
-) -> list[tuple[dict, float]]: # tuple of metadata row as a dictionary and float (bm25 score)
+def bm25_search(query: str, bm25, metadata_rows: list[dict], top_k: int = 5) -> list[tuple[dict, float]]:
     """
-    Run one BM25 query and return ranked results.
+    Return top_k documents ranked by BM25 score.
+    Got syntax help from Lecture 5 notes: Comparison between BM25 and embedding-based search
     """
-    results = bm25_search(
-        query = query, 
-        bm25 = bm25,
-        metadata_rows = metadata_rows,
-        top_k = top_k
-    )
-
-    return results
+    tokenized_query = tokenize(query)
+    scores = bm25.get_scores(tokenized_query)
+    sorted_indices = np.argsort(scores)[::-1]
+    top_k_indices = sorted_indices[:top_k]
+    return [(metadata_rows[i], scores[i]) for i in top_k_indices]
 
 # driver program
 def main(query: str, max_rows: int | None = None):
@@ -225,12 +144,14 @@ def main(query: str, max_rows: int | None = None):
         bm25_path = bm25_path
     )
 
-    results = run_bm25_query(
+    results = bm25_search(
         query = query,
         bm25 = bm25,
         metadata_rows = metadata_rows,
         top_k = 5
     )
+
+    print(f"\n======= QUERY =======: {query}")
 
     for rank, (row, score) in enumerate(results, start=1):
         print(f"\nRank {rank}")
