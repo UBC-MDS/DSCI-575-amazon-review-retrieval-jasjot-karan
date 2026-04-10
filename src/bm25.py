@@ -2,6 +2,7 @@
 Implements a BM25 keyoword based retreival system using LangChain
 Following docs were used for help: https://docs.langchain.com/oss/python/integrations/retrievers/bm25
 '''
+import gc
 import numpy as np
 from rank_bm25 import BM25Okapi
 from utils import tokenize, get_total_rows, load_pickle_if_valid, save_pickle, load_tokenized_corpus_and_metadata_in_chunks
@@ -63,7 +64,7 @@ def load_or_build_corpus_artifacts(
     print(f"Saved metadata rows to: {metadata_path}")
 
     return tokenized_corpus, metadata_rows
-
+    
 def load_or_build_bm25(
     tokenized_corpus: list[list[str]],
     bm25_path: str = BM25_PATH
@@ -88,6 +89,48 @@ def load_or_build_bm25(
 
     return bm25
 
+def load_or_build_search_artifacts(
+    corpus_path: str,
+    tokenized_path: str, 
+    metadata_path: str,
+    bm25_path: str,
+    chunk_size: int,
+    max_rows: int | None = None
+):
+    '''
+    If BM25 index and metadata rows already exist, load them right without reading in the tokenized_path or corpus path.
+
+    Fast path after BM25 index and metadata rows (for output display) have been persisted: Load existing BM25 index and metadata rows and return immediately.
+    Slow path: build/load tokenized corpus and metadata, and then build/load BM25.
+    '''
+    bm25 = load_pickle_if_valid(bm25_path)
+    metadata_rows = load_pickle_if_valid(metadata_path)
+
+    if bm25 is not None and metadata_rows is not None:
+        print("Loaded existing BM25 index and metadata rows...")
+        return bm25, metadata_rows
+    
+    print("BM25 index and/or metadata_rows missing... Falling back to corpus artifacts")
+    
+    tokenized_corpus, metadata_rows = load_or_build_corpus_artifacts(
+        corpus_path = corpus_path,
+        tokenized_path = tokenized_path,
+        metadata_path = metadata_path,
+        chunk_size = chunk_size,
+        max_rows = max_rows
+    )
+
+    bm25 = load_or_build_bm25(
+        tokenized_corpus,
+        bm25_path = bm25_path
+    )
+
+    # delete the tokenized_corpus from memory as we do not need it 
+    del tokenized_corpus
+    gc.collect()
+
+    return bm25, metadata_rows
+
 def bm25_search(query: str, bm25, metadata_rows: list[dict], top_k: int = 5) -> list[tuple[dict, float]]:
     """
     Return top_k documents ranked by BM25 score.
@@ -95,8 +138,14 @@ def bm25_search(query: str, bm25, metadata_rows: list[dict], top_k: int = 5) -> 
     """
     tokenized_query = tokenize(query)
     scores = bm25.get_scores(tokenized_query)
-    sorted_indices = np.argsort(scores)[::-1] # return the indices that would sort the array in descending order to get indices of highest scores in desc order
-    top_k_indices = sorted_indices[:top_k]
+
+    # argpartition finds the indices of the largest top k scores without fully sorting the entire scores array
+    # after this step, the top k rows are in the last top k positions in the array
+    top_k_indices = np.argpartition(scores, -top_k)[-top_k:]
+
+    # sort those top k indices by their score values in descending order
+    top_k_indices = top_k_indices[np.argsort(scores[top_k_indices])[::-1]]
+
     return [(metadata_rows[i], scores[i]) for i in top_k_indices] # returns ranked scores along with product metadata in descending order
 
 # driver program
@@ -120,17 +169,13 @@ def main(query: str, max_rows: int | None = None):
     corpus_len = get_total_rows(CORPUS_PATH, max_rows = max_rows)
     print(f"Loaded corpus length: {corpus_len}")
 
-    tokenized_corpus, metadata_rows = load_or_build_corpus_artifacts(
+    bm25, metadata_rows = load_or_build_search_artifacts(
         corpus_path = CORPUS_PATH,
         tokenized_path = tokenized_path,
         metadata_path = metadata_path,
+        bm_25_path = bm25_path,
         chunk_size = CHUNK_SIZE,
         max_rows = max_rows
-    )
-
-    bm25 = load_or_build_bm25(
-        tokenized_corpus = tokenized_corpus,
-        bm25_path = bm25_path
     )
 
     results = bm25_search(
