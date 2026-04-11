@@ -1,0 +1,31 @@
+query_id,query,difficulty
+1,wireless bluetooth headphones,easy
+2,stainless steel water bottle 1 liter,easy
+3,gaming mechanical keyboard rgb,easy
+4,noise cancelling earbuds,easy
+5,office chair ergonomic,easy
+6,laptop backpack waterproof,easy
+7,earbuds secure fit running,easy
+8,speaker loud bass,easy
+9,4k monitor 27 inch,easy
+10,iphone fast charger cable,easy
+11,headphones that don’t last long on a charge,medium
+12,something that keeps water cold all day,medium
+13,chair that hurts your back after sitting,medium
+14,keyboard that is quiet when typing,medium
+15,earbuds that won’t fall out during workouts,medium
+16,laptop gets too hot when running programs,medium
+17,backpack that breaks easily over time,medium
+18,speaker not loud enough for a room,medium
+19,monitor that is easy on the eyes for long use,medium
+20,charger cable that stops working quickly,medium
+21,best headphones for long flights under 200,difficult
+22,water bottle for hiking that stays cold in hot weather,difficult
+23,good laptop for data science with long battery life,difficult
+24,office chair for back pain and long hours sitting,difficult
+25,earbuds for workouts that stay in and sound good,difficult
+26,lightweight laptop for travel with good battery life,difficult
+27,durable backpack with laptop protection anti theft,difficult
+28,outdoor speaker with strong bass and waterproof,difficult
+29,monitor for coding with high resolution and low eye strain,difficult
+30,fast charging cable that is durable and long lasting,difficult
