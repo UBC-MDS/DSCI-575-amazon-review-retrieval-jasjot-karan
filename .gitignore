@@ -1,3 +1,18 @@
+# ignore all processed and raw data files but keep the folder itself
+data/processed/*
+!data/processed/.gitkeep
+
+data/raw/*
+!data/raw/.gitkeep
+
+.DS_Store
+
+# ignore common large artifacts
+*.npy
+*.pkl
+*.parquet
+*.index
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]

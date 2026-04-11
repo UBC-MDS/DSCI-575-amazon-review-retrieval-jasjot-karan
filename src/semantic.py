@@ -14,17 +14,19 @@ import faiss
 import math
 import numpy as np 
 import polars as pl
-from tqdm import tqdm # for progress bar
+from pathlib import Path
 from sentence_transformers import SentenceTransformer
 
 from utils import get_total_rows, load_pickle_if_valid, save_pickle, META_COLS
 
-DATA_DIR = "../data/processed"
-CORPUS_PATH = f"{DATA_DIR}/retrieval_corpus.parquet"
-FAISS_INDEX_PATH = f"{DATA_DIR}/faiss_index.index"
-METADATA_PATH = f"{DATA_DIR}/metadata_rows.pkl"
-EMBEDDINGS_PATH = f"{DATA_DIR}/embeddings.npy"
-EMBEDDINGS_CHUNK_GLOB = f"{DATA_DIR}/embeddings_chunk_*.npy" # standard file format to load all chunk files from
+# make sure the data can be processed regardless of the directory we are in
+BASE_DIR = Path(__file__).resolve().parent.parent
+DATA_DIR = BASE_DIR / "data/processed"
+
+CORPUS_PATH = DATA_DIR / "retrieval_corpus.parquet"
+FAISS_INDEX_PATH = DATA_DIR / "faiss_index.index"
+METADATA_PATH = DATA_DIR / "metadata_rows.pkl"
+EMBEDDINGS_PATH = DATA_DIR / "embeddings.npy"
 
 MODEL_NAME = "all-MiniLM-L6-v2"
 CHUNK_SIZE = 10_000
@@ -43,24 +45,24 @@ def get_embedding_chunk_pattern(max_rows: int | None = None):
     Return the chunk file pattern for saved embedding chunks.
     '''
     if max_rows is not None:
-        return f"{DATA_DIR}/embeddings_{max_rows}_chunk_*.npy"
-    return EMBEDDINGS_CHUNK_GLOB
+        return f"embeddings_{max_rows}_chunk_*.npy"
+    return "embeddings_chunk_*.npy"
 
-def get_embeddings_chunk_path(chunk_idx: int, max_rows: int | None = None) -> str:
+def get_embeddings_chunk_path(chunk_idx: int, max_rows: int | None = None) -> Path:
     '''
     Return the filepath for one embedding chunk.
     '''
     if max_rows is not None:
-        return f"{DATA_DIR}/embeddings_{max_rows}_chunk_{chunk_idx}.npy"
+        return DATA_DIR / f"embeddings_{max_rows}_chunk_{chunk_idx}.npy"
 
-    return f"{DATA_DIR}/embeddings_chunk_{chunk_idx}.npy"
+    return DATA_DIR / f"embeddings_chunk_{chunk_idx}.npy"
 
 def load_embedding_chunk_files(max_rows: int | None = None) -> list[str]:
     '''
     Return sorted embedding chunk file paths.
     '''
     chunk_pattern = get_embedding_chunk_pattern(max_rows = max_rows)
-    return sorted(glob.glob(chunk_pattern))
+    return sorted(DATA_DIR.glob(chunk_pattern))
 
 def build_faiss_index_from_embedding_chunks(
     chunk_files: list[str],
@@ -94,7 +96,7 @@ def build_faiss_index_from_embedding_chunks(
         index.add(embeddings)
     
     # persist the index if we built it
-    faiss.write_index(index, index_path)
+    faiss.write_index(index, str(index_path))
     print(f"Saved rebuilt FAISS index to: {index_path}")
 
     return index
@@ -182,7 +184,7 @@ def build_faiss_index_and_metadata(
         gc.collect()
     
     # persist the index 
-    faiss.write_index(index, index_path)
+    faiss.write_index(index, str(index_path))
     print(f"Saved FAISS index to: {index_path}")
 
     save_pickle(metadata_rows, metadata_path)
@@ -207,7 +209,7 @@ def load_or_build_semantic_artifacts(
     metadata_rows = load_pickle_if_valid(metadata_path)
 
     try:
-        index = faiss.read_index(index_path)
+        index = faiss.read_index(str(index_path))
     except Exception: 
         index = None 
     
@@ -320,7 +322,7 @@ def run_semantic_search(
             print("Price:", row.get("price", "N/A"))
             print("Rating:", row.get("average_rating", "N/A"))
             print("Description:", row.get("description", "N/A"))
-            print("Review snippets:", (row.get("all_review_texts") or "")[:200])
+            print("Review snippets:", (row.get("review_text_200") or "")[:200])
     
     # if verbose is False, just return the results: (metadata_row, score)
     return results
