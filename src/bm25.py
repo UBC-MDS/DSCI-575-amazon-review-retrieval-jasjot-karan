@@ -199,4 +199,4 @@ def search_products_bm25(query: str, top_k: int = 5, max_rows: int | None = None
 if __name__ == "__main__":
     TEST_QUERY = "wireless noise cancelling headphones"
     # MAX_ROWS = 50_000
-    search_products_bm25(TEST_QUERY, top_k = 5)
+    search_products_bm25(TEST_QUERY, top_k = 5, verbose = True)

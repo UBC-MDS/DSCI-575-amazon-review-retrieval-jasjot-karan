@@ -171,7 +171,8 @@ def build_faiss_index_and_metadata(
         # referenced: https://www.pinecone.io/learn/series/faiss/hnsw/
         index.add(embeddings)
 
-        # add the embeddings (one per row) to metadata_rows
+        # add the metadata for this chunk (one dict per row) to metadata_rows (each dict is on its own line)
+        # order has to matxh index.add(embeddings) as every metadata row has the same index as its embedding in the FAISS index
         metadata_rows.extend(chunk_metadata)
 
         print(f"Processed chunk: {chunk_idx + 1}/{num_chunks}")
@@ -188,7 +189,6 @@ def build_faiss_index_and_metadata(
     print(f"Saved Semantic metadata rows to: {metadata_path}")
 
     return index, metadata_rows
-
 
 def load_or_build_semantic_artifacts(
     corpus_path: str,
@@ -327,5 +327,5 @@ def run_semantic_search(
 
 if __name__ == "__main__":
     TEST_QUERY = "wireless noise cancelling headphones"
-    MAX_ROWS = 50_000
-    run_semantic_search(TEST_QUERY, top_k = 5, max_rows = MAX_ROWS)
+    # MAX_ROWS = 50_000
+    run_semantic_search(TEST_QUERY, top_k = 5, verbose = True)
