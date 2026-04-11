@@ -322,7 +322,7 @@ def run_semantic_search(
             print("Price:", row.get("price", "N/A"))
             print("Rating:", row.get("average_rating", "N/A"))
             print("Description:", row.get("description", "N/A"))
-            print("Review snippets:", (row.get("all_review_texts") or "")[:200])
+            print("Review snippets:", (row.get("review_text_200") or "")[:200])
     
     # if verbose is False, just return the results: (metadata_row, score)
     return results
