@@ -10,6 +10,22 @@ from tqdm import tqdm # for progress bar
 
 STOPWORDS = set(ENGLISH_STOP_WORDS)
 
+META_COLS = [
+    "parent_asin",
+    "product_title",
+    "description",
+    "main_category",
+    "store",
+    "price",
+    "average_rating",
+    "rating_number",
+    "review_count",
+    "features",
+    "categories",
+    "all_review_titles",
+    "review_text_200"
+]
+
 def get_total_rows(corpus_path: str, max_rows: int | None = None) -> int: 
     """
     Count rows lazily from the pqrquet file 
