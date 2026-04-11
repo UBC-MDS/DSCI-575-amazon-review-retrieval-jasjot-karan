@@ -5,13 +5,17 @@ Following docs were used for help: https://docs.langchain.com/oss/python/integra
 import gc
 import numpy as np
 from rank_bm25 import BM25Okapi
+from pathlib import Path
 from utils import tokenize, get_total_rows, load_pickle_if_valid, save_pickle, load_tokenized_corpus_and_metadata_in_chunks, META_COLS
 
-DATA_DIR = "../data/processed"
-TOKENIZED_PATH = f"{DATA_DIR}/tokenized_corpus.pkl"
-BM25_PATH = f"{DATA_DIR}/bm25_index.pkl"
-CORPUS_PATH = f"{DATA_DIR}/retrieval_corpus.parquet"
-METADATA_PATH = f"{DATA_DIR}/metadata_rows.pkl"
+# make sure the data can be processed regardless of the directory we are in
+BASE_DIR = Path(__file__).resolve().parent.parent
+DATA_DIR = BASE_DIR / "data/processed"
+
+TOKENIZED_PATH = DATA_DIR / "tokenized_corpus.pkl"
+BM25_PATH = DATA_DIR / "bm25_index.pkl"
+CORPUS_PATH = DATA_DIR / "retrieval_corpus.parquet"
+METADATA_PATH = DATA_DIR / "metadata_rows.pkl"
 
 CHUNK_SIZE = 10000
 
