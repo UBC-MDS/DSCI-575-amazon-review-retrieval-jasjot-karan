@@ -5,6 +5,8 @@ data/processed/*
 data/raw/*
 !data/raw/.gitkeep
 
+.DS_Store
+
 # ignore common large artifacts
 *.npy
 *.pkl
