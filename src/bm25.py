@@ -5,7 +5,7 @@ Following docs were used for help: https://docs.langchain.com/oss/python/integra
 import gc
 import numpy as np
 from rank_bm25 import BM25Okapi
-from utils import tokenize, get_total_rows, load_pickle_if_valid, save_pickle, load_tokenized_corpus_and_metadata_in_chunks
+from utils import tokenize, get_total_rows, load_pickle_if_valid, save_pickle, load_tokenized_corpus_and_metadata_in_chunks, META_COLS
 
 DATA_DIR = "../data/processed"
 TOKENIZED_PATH = f"{DATA_DIR}/tokenized_corpus.pkl"
@@ -14,21 +14,6 @@ CORPUS_PATH = f"{DATA_DIR}/retrieval_corpus.parquet"
 METADATA_PATH = f"{DATA_DIR}/metadata_rows.pkl"
 
 CHUNK_SIZE = 10000
-
-META_COLS = [
-    "parent_asin",
-    "product_title",
-    "description",
-    "main_category",
-    "store",
-    "price",
-    "average_rating",
-    "rating_number",
-    "review_count",
-    "features",
-    "categories",
-    "all_review_titles",
-]
 
 def load_or_build_corpus_artifacts(
     corpus_path: str,
@@ -149,7 +134,13 @@ def bm25_search(query: str, bm25, metadata_rows: list[dict], top_k: int = 5) -> 
     return [(metadata_rows[i], scores[i]) for i in top_k_indices] # returns ranked scores along with product metadata in descending order
 
 # driver program
-def main(query: str, max_rows: int | None = None):
+def search_products_bm25(query: str, top_k: int = 5, max_rows: int | None = None, verbose: bool = False):
+    '''
+    Run a BM25 search on the product/review corpus and return the top matching products.
+
+    Loads or builds the BM25 index and metadata, then ranks products based on the query.
+    Optionally limits the number of rows for faster testing.
+    '''
     # add suffix at the filepaths indicating number of rows for testing if we test a smaller subset
     tokenized_path = (
         f"{DATA_DIR}/tokenized_corpus_{max_rows}.pkl"
@@ -166,8 +157,9 @@ def main(query: str, max_rows: int | None = None):
         if max_rows is not None else BM25_PATH
     )
 
-    corpus_len = get_total_rows(CORPUS_PATH, max_rows = max_rows)
-    print(f"Loaded corpus length: {corpus_len}")
+    if verbose: 
+        corpus_len = get_total_rows(CORPUS_PATH, max_rows = max_rows)
+        print(f"Loaded corpus length: {corpus_len}")
 
     bm25, metadata_rows = load_or_build_search_artifacts(
         corpus_path = CORPUS_PATH,
@@ -182,23 +174,29 @@ def main(query: str, max_rows: int | None = None):
         query = query,
         bm25 = bm25,
         metadata_rows = metadata_rows,
-        top_k = 5
+        top_k = top_k
     )
 
-    print(f"\n======= QUERY =======: {query}")
+    # for downstream use: the metdata we want to print will be controlled by the UI, not this function itself
+    if verbose: 
+        print(f"\n======= QUERY =======: {query}")
 
-    for rank, (row, score) in enumerate(results, start=1):
-        print(f"\nRank {rank}")
-        print("Score:", round(float(score), 4))
-        print("ASIN:", row.get("parent_asin"))
-        print("Title:", row.get("product_title"))
-        print("Category:", row.get("main_category"))
-        print("Store:", row.get("store"))
-        print("Price:", row.get("price"))
-        print("Rating:", row.get("average_rating"))
-        print("Description:", row.get("description"))
+        for rank, (row, score) in enumerate(results, start=1):
+            print(f"\nRank {rank}")
+            print("Score:", round(float(score), 4))
+            print("ASIN:", row.get("parent_asin", "N/A"))
+            print("Title:", row.get("product_title", "N/A"))
+            print("Category:", row.get("main_category", "N/A"))
+            print("Store:", row.get("store", "N/A"))
+            print("Price:", row.get("price", "N/A"))
+            print("Rating:", row.get("average_rating", "N/A"))
+            print("Description:", row.get("description", "N/A"))
+            print("Review snippet:", (row.get("review_text_200") or "")[:200])
+    
+    # if verbose is False, just return the results: (metadata_row, score)
+    return results
 
 if __name__ == "__main__":
     TEST_QUERY = "wireless noise cancelling headphones"
     # MAX_ROWS = 50_000
-    main(TEST_QUERY)
+    search_products_bm25(TEST_QUERY, top_k = 5)
