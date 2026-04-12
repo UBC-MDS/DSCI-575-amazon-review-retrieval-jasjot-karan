@@ -5,7 +5,9 @@ Attribution: Used ChatGPT 5 to generate HTML code that matches the Amazon theme,
 import streamlit as st
 import sys
 import os
+import csv
 from pathlib import Path
+from datetime import datetime, timezone
 
 sys.path.append(str(Path(__file__).resolve().parent.parent / "src"))
 
@@ -257,6 +259,58 @@ hr {
 """
 st.markdown(AMAZON_CSS, unsafe_allow_html=True)
 
+# USER FEEDBACK (thumbs up or thumns down) STORAGE SETUP
+# set up filepaths for where user feedback will be 
+BASE_DIR = Path(__file__).resolve().parent.parent
+FEEDBACK_DIR = BASE_DIR / "feedback"
+
+# make feedback directory if it does not already exist 
+FEEDBACK_DIR.mkdir(parents = True, exist_ok = True)
+
+# set one canonical source of truth for raw data
+FEEDBACK_PATH = FEEDBACK_DIR / "user_feedback.csv"
+
+def save_feedback(
+        query: str, 
+        search_type: str, 
+        rank: int, 
+        score: float,
+        row: dict,
+        feedback: str
+) -> None:
+    '''
+    Saves one user query (feedback event) to a single master CSV.
+    Referenced the Python docs for DictWriter for the below: https://docs.python.org/3/library/csv.html#csv.DictWriter
+    '''
+    record = {
+        "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+        "query": query,
+        "search_type": search_type,
+        "rank": rank,
+        "feedback": feedback,
+        "score": round(float(score), 6),
+        "parent_asin": row.get("parent_asin"),
+        "product_title": row.get("product_title"),
+        "main_category": row.get("main_category"),
+        "average_rating": row.get("average_rating"),
+        "rating_number": row.get("rating_number"),
+        "review_count": row.get("review_count"),
+        "review_text_200": row.get("review_text_200"),
+    }
+
+    file_exists = FEEDBACK_PATH.exists()
+
+    # if the feedback file already exists, append the current dict/record to the file 
+    with open(FEEDBACK_PATH, mode = "a", newline = "", encoding = "utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames = record.keys())
+        
+        # if the file does not exist/ is empty, write the header as well 
+        if not file_exists:
+            writer.writeheader()
+        
+        # append the row to the file
+        writer.writerow(record)
+
 # DATA LOADING
 @st.cache_resource
 def initialize_models():
@@ -318,7 +372,7 @@ search_mode = st.radio(
     horizontal=True
 )
 
-def render_result_card(rank, row, score, score_label="Score"):
+def render_result_card(rank, row, score, query, search_type, score_label="Score"):
     title = row.get("product_title", "N/A")
     rating = row.get("average_rating", "N/A")
     category = row.get("main_category", "N/A")
@@ -344,6 +398,39 @@ def render_result_card(rank, row, score, score_label="Score"):
         unsafe_allow_html=True
     )
 
+    # set up unique button keys for every card/widget, since each widget (each thumbs up or down) for every result nees a unique key
+    button_prefix = f"{search_type}_{query}_{row.get('parent_asin', 'unknown')}"
+
+    st.markdown("**Was this result relevant?**")
+
+    col_up, col_down, _ = st.columns([1, 1, 6])
+
+    with col_up:
+        if st.button("👍 Yes", key = f"{button_prefix}_up"):
+            save_feedback(
+                query = query, 
+                search_type = search_type,
+                rank = rank,
+                score = score,
+                row = row,
+                feedback = "up"
+            )
+            
+            st.success("Thanks! 👍")
+    
+    with col_down: 
+        if st.button("👎 No", key = f"{button_prefix}_down"):
+            save_feedback(
+                query = query, 
+                search_type = search_type,
+                rank = rank,
+                score = score,
+                row = row,
+                feedback = "down"
+            )
+            
+            st.success("Got it, thanks 👎")
+
 if query:
     if search_mode == "BM25":
         st.markdown('<div class="section-title">BM25 Results</div>', unsafe_allow_html=True)
@@ -358,7 +445,14 @@ if query:
 
         if bm25_results:
             for rank, (row, score) in enumerate(bm25_results, start=1):
-                render_result_card(rank, row, score, score_label="BM25 Score")
+                render_result_card(
+                    rank = rank, 
+                    row = row, 
+                    score = score, 
+                    query = query,
+                    search_type = "bm25",
+                    score_label="BM25 Score"
+                )
         else:
             st.warning("No BM25 results found.")
 
@@ -376,7 +470,14 @@ if query:
 
         if sem_results:
             for rank, (row, score) in enumerate(sem_results, start=1):
-                render_result_card(rank, row, score, score_label="Similarity")
+                render_result_card(
+                    rank, 
+                    row, 
+                    score,
+                    query,
+                    search_type = "semantic",
+                    score_label="Similarity"
+                )
         else:
             st.warning("No semantic search results found.")
 else:
