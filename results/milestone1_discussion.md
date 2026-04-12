@@ -64,8 +64,23 @@ The following table compares the top 5 retrieval results using **BM25** (keyword
 
 ### Summary of Observations
 
-The comparative performance of BM25 and Semantic Search was highly dependent on term specificity and the linguistic nature of the query. BM25 consistently performed better for technical/factoid queries with exact measurements or brand names, while Semantic Search excelled in intent-based queries where natural language described a use case rather than a specific product name. 
+The comparative performance of BM25 and Semantic Search was highly dependent on term specificity and the linguistic nature of the query. BM25 consistently performed better for technical queries with exact measurements or brand names, while Semantic Search excelled in intent-based queries, in which the language described a use case rather than a specific product name. 
 
 BM25's primary failure mode was Keyword Over-indexing, where it frequently retrieved accessories like cases or adapters due to high token overlap in titles. Semantic search more accurately recognized the core product categories in these instances. On the other hand, Semantic search struggled with negation, such as "don't last long", and adjective polarity, occasionally confusing "cold water" bottles with "hot water" bottles. It also faced issues with temporal relevance by returning obsolete hardware for general charger queries.
 
 While the results were highly useful for "easy" queries, utility decreased as complexity increased. Retrieval models often matched the general product type but ignored complex numerical or conditional constraints. BM25 remained reliable for keyword-based (easy) queries, whereas semantic search provided significant value for "medium" queries by finding synonyms like "back support" for the query term "hurts back". The observed degradation in precision for "difficult" queries highlights a critical need for for more advanced methods, such as reranking, in future development to address specific user constraints.
+
+### 4.4 Summarize Insights
+
+### Which model is better and why?
+While both methods have strengths, **semantic search** is the better foundation for this project. Unlike BM25, which only looks for exact matching words, semantic search understands the "meaning" behind a user's query. This allows it to find relevant products even when the user uses different vocabulary, such as connecting "back pain" to "support cushions". Although it currently struggles with logic (like the word "not"), its ability to understand context makes it much more useful for a real-world shopping experience.
+
+### How would they perform together? (hybrid search)
+A hybrid search system would likely provide the best results by using the strengths of both models at the same time. We could use BM25 to "anchor" the search to specific product keywords, which would stop the system from returning irrelevant accessories like cases or stands. Then, we would use semantic search to rank those results based on how well they match the deeper meaning of the user's request. This combined approach would offer both the high accuracy of keyword matching and the "intelligence" of semantic understanding.
+
+### RAG and future directions
+In the next milestones, this retrieval system will serve as the core of a retrieval-augmented generation (RAG) pipeline.
+* **What is RAG?** RAG is a way to give a large language model (like a chatbot) specific, reliable facts so it can provide better answers. Instead of the AI guessing or "hallucinating," it uses the products and reviews we retrieve as its source of truth.
+* **How we will use it:** We will use the top results from our search to feed "context" into a generator. This will allow the system to act as a personal shopping assistant that can summarize reviews and explain *why* a specific product is a good match for the user's needs.
+
+To make this RAG system successful, our next steps will focus on reranking to ensure that the most accurate data is retrieved, and category filtering to make sure that the AI is only looking at the right types of products before it starts generating a response.
