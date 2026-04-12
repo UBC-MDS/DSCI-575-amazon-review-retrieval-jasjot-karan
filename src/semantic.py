@@ -331,3 +331,4 @@ if __name__ == "__main__":
     TEST_QUERY = "wireless noise cancelling headphones"
     # MAX_ROWS = 50_000
     run_semantic_search(TEST_QUERY, top_k = 5, verbose = True)
+    
