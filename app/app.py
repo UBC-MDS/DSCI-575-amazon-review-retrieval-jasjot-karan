@@ -32,6 +32,8 @@ from semantic import (
     EMBED_BATCH_SIZE
 )
 
+from hybrid import hybrid_search 
+
 st.set_page_config(
     page_title="Amazon Electronics Product Retrieval",
     layout="wide",
@@ -368,7 +370,7 @@ with col2:
 
 search_mode = st.radio(
     "Search mode",
-    options=["BM25", "Semantic Search"],
+    options=["BM25", "Semantic Search", "Hybrid Search"],
     horizontal=True
 )
 
@@ -399,7 +401,7 @@ def render_result_card(rank, row, score, query, search_type, score_label="Score"
     )
 
     # set up unique button keys for every card/widget, since each widget (each thumbs up or down) for every result nees a unique key
-    button_prefix = f"{search_type}_{query}_{row.get('parent_asin', 'unknown')}"
+    button_prefix = f"{search_type}_{query}_{rank}_{row.get('parent_asin', 'unknown')}"
 
     st.markdown("**Was this result relevant?**")
 
@@ -480,6 +482,36 @@ if query:
                 )
         else:
             st.warning("No semantic search results found.")
+    
+    elif search_mode == "Hybrid Search":
+        st.markdown('<div class="section-title">Hybrid Search Results</div>', unsafe_allow_html=True)
+
+        with st.spinner("Running hybrid retrieval..."):
+            hybrid_results = hybrid_search(
+                query = query, 
+                bm25_index = bm25_index,
+                bm25_metadata_rows = bm_25_metadata_rows,
+                faiss_index = faiss_index,
+                semantic_metadata_rows = semantic_metadata_rows,
+                model = model,
+                top_k = top_k,
+                candidate_multiplier = 3, # retrieves more than top k from each method before fusing the scores so the hybrid score has a better signal ex) If one method ranks a doc 2 and the otehr ranks it 12, having no candidate_multiplier results in only top 5 rankings compared compared, which could miss some similarities
+                rrf_k = 60 # RRF smoothing constant
+            )
+        
+        if hybrid_results:
+            for rank, (metadata_row, hybrid_score) in enumerate(hybrid_results, start = 1):
+                render_result_card(
+                    rank = rank, 
+                    row = metadata_row, 
+                    score = hybrid_score,
+                    query = query,
+                    search_type = "hybrid",
+                    score_label="Hybrid Score"
+                )
+        
+        else:
+            st.warning("No hybrid search results found.")
 else:
     st.markdown(
         """
