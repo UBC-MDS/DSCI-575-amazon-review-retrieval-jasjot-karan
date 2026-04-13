@@ -1,6 +1,6 @@
 # Amazon Electronics Product Retrieval
 
-A production-style information retrieval system built on Amazon Electronics review data. The system implements and compares three retrieval strategies — **BM25 keyword search**, **semantic vector search**, and a **hybrid approach** using Reciprocal Rank Fusion (RRF) — and surfaces results through a clean Streamlit UI modeled after the Amazon experience.
+A production-style information retrieval system built on Amazon Electronics review data. The system implements and compares three retrieval strategies: **BM25 keyword search**, **semantic vector search**, and a **hybrid approach** using Reciprocal Rank Fusion (RRF). The application surfaces results through a clean Streamlit UI modeled after the Amazon experience.
 
 Users can search, compare methods side-by-side, and provide thumbs up/down relevance feedback that gets persisted for evaluation.
 
@@ -32,9 +32,9 @@ Users can search, compare methods side-by-side, and provide thumbs up/down relev
 
 ## Dataset
 
-This project uses the [Amazon Reviews 2023](https://amazon-reviews-2023.github.io/) dataset, specifically the **Electronics** category. The dataset contains product metadata and customer reviews for millions of electronics products sold on Amazon.
+This project uses the `meta_Electronics.jsonl` and `Electronics.jsonl` datasets from [Amazon Reviews 2023](https://amazon-reviews-2023.github.io/), which are products from the **Electronics** category. The dataset contains product metadata and customer reviews for 18 million+ electronics products sold on Amazon.
 
-Each document in the retrieval corpus is constructed by combining product metadata and review text into a single `retrieval_text` field. The following metadata columns are stored alongside each document for display:
+Each document in the retrieval corpus is created by combining product metadata and review text into a single `retrieval_text` field. The following metadata columns are stored alongside each document for display:
 
 | Field | Description |
 | --- | --- |
@@ -66,7 +66,7 @@ All preprocessing is handled in `notebooks/milestone1_exploration.ipynb`, which 
 At search time, `utils.py` handles two tokenization paths:
 
 - **Python tokenizer** (`tokenize()`) — used for short user queries: lowercases, strips non-alphanumeric characters, and removes English stop words
-- **Polars vectorized tokenizer** (`polars_tokenize_expr()`) — used for bulk corpus tokenization at index build time using Polars expressions for speed
+- **Polars vectorized tokenizer** (`polars_tokenize_expr()`) — used for bulk corpus tokenization at index build time using Polars expressions for faster tokenization speed
 
 ---
 
