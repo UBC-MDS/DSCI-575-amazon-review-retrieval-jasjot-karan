@@ -1,0 +1,530 @@
+'''
+UI for the retrieval application. 
+Attribution: Used ChatGPT 5 to generate HTML code that matches the Amazon theme, along with actual cards to make the UI design cleaner.
+'''
+import streamlit as st
+import sys
+import os
+import csv
+from pathlib import Path
+from datetime import datetime, timezone
+
+sys.path.append(str(Path(__file__).resolve().parent.parent / "src"))
+
+from bm25 import (
+    bm25_search, 
+    load_or_build_search_artifacts,
+    CORPUS_PATH as BM25_CORPUS_PATH,
+    TOKENIZED_PATH,
+    METADATA_PATH as BM25_META_PATH,
+    BM25_PATH,
+    CHUNK_SIZE as BM25_CHUNK_SIZE
+)
+
+from semantic import (
+    semantic_search, 
+    load_or_build_semantic_artifacts,
+    load_sentence_transformer_smodel,
+    CORPUS_PATH as SEMANTIC_CORPUS_PATH,
+    FAISS_INDEX_PATH,
+    METADATA_PATH as SEMANTIC_META_PATH,
+    CHUNK_SIZE as SEMANTIC_CHUNK_SIZE,
+    EMBED_BATCH_SIZE
+)
+
+from hybrid import hybrid_search 
+
+st.set_page_config(
+    page_title="Amazon Electronics Product Retrieval",
+    layout="wide",
+    initial_sidebar_state="collapsed"
+)
+
+AMAZON_CSS = """
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+html, body, [class*="css"] {
+    font-family: 'Inter', sans-serif;
+}
+
+.stApp {
+    background: linear-gradient(180deg, #0f1111 0%, #131a22 100%);
+    color: #f5f5f5;
+}
+
+/* main container */
+.block-container {
+    padding-top: 2rem;
+    padding-bottom: 2rem;
+    max-width: 1200px;
+}
+
+/* hide some default streamlit chrome */
+#MainMenu, footer, header {
+    visibility: hidden;
+}
+
+/* hide weird default status/spinner icons where possible */
+[data-testid="stDecoration"] {
+    display: none;
+}
+
+/* title hero */
+.hero-wrap {
+    background: linear-gradient(135deg, rgba(255,153,0,0.16), rgba(255,153,0,0.04));
+    border: 1px solid rgba(255,153,0,0.18);
+    border-radius: 24px;
+    padding: 2rem 2rem 1.5rem 2rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.30);
+}
+
+.hero-badge {
+    display: inline-block;
+    background: rgba(255,153,0,0.15);
+    color: #ffb84d;
+    border: 1px solid rgba(255,153,0,0.25);
+    padding: 0.35rem 0.75rem;
+    border-radius: 999px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+}
+
+.hero-title {
+    font-size: 3rem;
+    font-weight: 800;
+    line-height: 1.05;
+    color: #ffffff;
+    margin: 0 0 0.75rem 0;
+    letter-spacing: -0.02em;
+}
+
+.hero-subtitle {
+    font-size: 1.05rem;
+    color: #d5d9d9;
+    margin: 0;
+    max-width: 850px;
+}
+
+/* labels */
+.stTextInput label, .stRadio label, .stSlider label {
+    color: #f5f5f5 !important;
+    font-weight: 600 !important;
+}
+
+/* text input */
+.stTextInput input {
+    background-color: #1a1a1a !important;
+    color: #ffffff !important;
+    border: 1px solid #2f3b46 !important;
+    border-radius: 14px !important;
+    padding: 0.9rem 1rem !important;
+    font-size: 1rem !important;
+}
+
+.stTextInput input::placeholder {
+    color: #9aa4ad !important;
+}
+
+/* radio buttons container */
+div[role="radiogroup"] {
+    background: rgba(255,255,255,0.03);
+    padding: 0.85rem 1rem;
+    border-radius: 16px;
+    border: 1px solid rgba(255,255,255,0.08);
+    gap: 1rem;
+}
+
+/* slider */
+[data-testid="stSidebar"] {
+    background: #111827;
+}
+
+/* track (background line) */
+.stSlider [data-baseweb="slider"] > div > div {
+    background: #2f3b46 !important;
+}
+
+/* filled track (left side of thumb) */
+.stSlider [data-baseweb="slider"] > div > div > div {
+    background: #ff9900 !important;  /* Amazon orange */
+}
+
+/* slider thumb (circle) */
+.stSlider [data-baseweb="slider"] div[role="slider"] {
+    background-color: #ff9900 !important;
+    border: 2px solid #ffb84d !important;
+    box-shadow: 0 0 0 4px rgba(255,153,0,0.15) !important;
+}
+
+/* hover effect */
+.stSlider [data-baseweb="slider"] div[role="slider"]:hover {
+    box-shadow: 0 0 0 6px rgba(255,153,0,0.25) !important;
+}
+
+/* number text (1-10) */
+.stSlider span {
+    color: #d5d9d9 !important;
+}
+
+/* custom card */
+.result-card {
+    background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+    border: 1px solid rgba(255,255,255,0.08);
+    border-left: 4px solid #ff9900;
+    border-radius: 20px;
+    padding: 1.2rem 1.2rem 1rem 1.2rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.22);
+}
+
+.result-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.rank-pill {
+    display: inline-block;
+    background: rgba(255,153,0,0.14);
+    color: #ffb84d;
+    border: 1px solid rgba(255,153,0,0.26);
+    padding: 0.28rem 0.7rem;
+    border-radius: 999px;
+    font-size: 0.82rem;
+    font-weight: 700;
+}
+
+.score-pill {
+    display: inline-block;
+    background: rgba(255,255,255,0.06);
+    color: #f3f4f6;
+    border: 1px solid rgba(255,255,255,0.08);
+    padding: 0.28rem 0.7rem;
+    border-radius: 999px;
+    font-size: 0.82rem;
+    font-weight: 600;
+}
+
+.result-title {
+    font-size: 1.18rem;
+    font-weight: 700;
+    color: #ffffff;
+    margin-bottom: 0.65rem;
+    line-height: 1.4;
+}
+
+.meta-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    margin-bottom: 0.8rem;
+}
+
+.meta-chip {
+    background: rgba(255,255,255,0.05);
+    color: #d5d9d9;
+    border: 1px solid rgba(255,255,255,0.06);
+    padding: 0.35rem 0.7rem;
+    border-radius: 999px;
+    font-size: 0.84rem;
+}
+
+.review-box {
+    background: rgba(0,0,0,0.22);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 14px;
+    padding: 0.9rem 1rem;
+    color: #e5e7eb;
+    line-height: 1.55;
+    font-size: 0.96rem;
+}
+
+/* headers */
+.section-title {
+    font-size: 1.4rem;
+    font-weight: 750;
+    color: #ffffff;
+    margin: 1rem 0 1rem 0;
+}
+
+/* remove divider heaviness */
+hr {
+    border-color: rgba(255,255,255,0.08);
+}
+</style>
+"""
+st.markdown(AMAZON_CSS, unsafe_allow_html=True)
+
+# USER FEEDBACK (thumbs up or thumns down) STORAGE SETUP
+# set up filepaths for where user feedback will be 
+BASE_DIR = Path(__file__).resolve().parent.parent
+FEEDBACK_DIR = BASE_DIR / "feedback"
+
+# make feedback directory if it does not already exist 
+FEEDBACK_DIR.mkdir(parents = True, exist_ok = True)
+
+# set one canonical source of truth for raw data
+FEEDBACK_PATH = FEEDBACK_DIR / "user_feedback.csv"
+
+def save_feedback(
+        query: str, 
+        search_type: str, 
+        rank: int, 
+        score: float,
+        row: dict,
+        feedback: str
+) -> None:
+    '''
+    Saves one user query (feedback event) to a single master CSV.
+    Referenced the Python docs for DictWriter for the below: https://docs.python.org/3/library/csv.html#csv.DictWriter
+    '''
+    record = {
+        "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+        "query": query,
+        "search_type": search_type,
+        "rank": rank,
+        "feedback": feedback,
+        "score": round(float(score), 6),
+        "parent_asin": row.get("parent_asin"),
+        "product_title": row.get("product_title"),
+        "main_category": row.get("main_category"),
+        "average_rating": row.get("average_rating"),
+        "rating_number": row.get("rating_number"),
+        "review_count": row.get("review_count"),
+        "review_text_200": row.get("review_text_200"),
+    }
+
+    file_exists = FEEDBACK_PATH.exists()
+
+    # if the feedback file already exists, append the current dict/record to the file 
+    with open(FEEDBACK_PATH, mode = "a", newline = "", encoding = "utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames = record.keys())
+        
+        # if the file does not exist/ is empty, write the header as well 
+        if not file_exists:
+            writer.writeheader()
+        
+        # append the row to the file
+        writer.writerow(record)
+
+# DATA LOADING
+@st.cache_resource
+def initialize_models():
+    # Load BM25 artifacts
+    bm25_index, bm_25_metadata_rows = load_or_build_search_artifacts(
+        corpus_path = BM25_CORPUS_PATH,
+        tokenized_path = TOKENIZED_PATH, 
+        metadata_path = BM25_META_PATH,
+        bm25_path = BM25_PATH,
+        chunk_size = BM25_CHUNK_SIZE,
+        max_rows = None
+    )
+    
+    # Load semantic artifacts
+    faiss_index, semantic_metadata_rows = load_or_build_semantic_artifacts(
+        corpus_path = SEMANTIC_CORPUS_PATH,
+        index_path = FAISS_INDEX_PATH,
+        metadata_path = SEMANTIC_META_PATH,
+        chunk_size = SEMANTIC_CHUNK_SIZE,
+        batch_size = EMBED_BATCH_SIZE,
+        max_rows = None
+    )
+
+    model = load_sentence_transformer_smodel()
+    
+    return bm25_index, bm_25_metadata_rows, faiss_index, semantic_metadata_rows, model
+
+bm25_index, bm_25_metadata_rows, faiss_index, semantic_metadata_rows, model = initialize_models()
+
+# UI LAYOUT
+st.markdown(
+    """
+    <div class="hero-wrap">
+        <div class="hero-badge">Amazon Electronics Product Retrieval</div>
+        <div class="hero-title">Amazon Electronics Product Retrieval</div>
+        <p class="hero-subtitle">
+            Search electronics products using either keyword-based BM25 or semantic retrieval.
+            Clean, fast, and built to feel more production-ready.
+        </p>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+
+col1, col2 = st.columns([4, 1])
+
+with col1:
+    query = st.text_input(
+        "Enter your product search query",
+        placeholder="e.g. lightweight laptop for travel, noise cancelling headphones, gaming monitor"
+    )
+
+with col2:
+    top_k = st.slider("Results", 1, 10, 3)
+
+search_mode = st.radio(
+    "Search mode",
+    options=["BM25", "Semantic Search", "Hybrid Search"],
+    horizontal=True
+)
+
+def render_result_card(rank, row, score, query, search_type, score_label="Score"):
+    title = row.get("product_title", "N/A")
+    rating = row.get("average_rating", "N/A")
+    category = row.get("main_category", "N/A")
+    snippet = (row.get("review_text_200") or "No review snippet available.")[:200]
+
+    st.markdown(
+        f"""
+        <div class="result-card">
+            <div class="result-top">
+                <span class="rank-pill">Rank #{rank}</span>
+                <span class="score-pill">{score_label}: {round(float(score), 4)}</span>
+            </div>
+            <div class="result-title">{title}</div>
+            <div class="meta-row">
+                <span class="meta-chip">⭐ Rating: {rating}</span>
+                <span class="meta-chip">📦 Category: {category}</span>
+            </div>
+            <div class="review-box">
+                {snippet}
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+    # set up unique button keys for every card/widget, since each widget (each thumbs up or down) for every result nees a unique key
+    button_prefix = f"{search_type}_{query}_{rank}_{row.get('parent_asin', 'unknown')}"
+
+    st.markdown("**Was this result relevant?**")
+
+    col_up, col_down, _ = st.columns([1, 1, 6])
+
+    with col_up:
+        if st.button("👍 Yes", key = f"{button_prefix}_up"):
+            save_feedback(
+                query = query, 
+                search_type = search_type,
+                rank = rank,
+                score = score,
+                row = row,
+                feedback = "up"
+            )
+            
+            st.success("Thanks! 👍")
+    
+    with col_down: 
+        if st.button("👎 No", key = f"{button_prefix}_down"):
+            save_feedback(
+                query = query, 
+                search_type = search_type,
+                rank = rank,
+                score = score,
+                row = row,
+                feedback = "down"
+            )
+            
+            st.success("Got it, thanks 👎")
+
+if query:
+    if search_mode == "BM25":
+        st.markdown('<div class="section-title">BM25 Results</div>', unsafe_allow_html=True)
+
+        with st.spinner("Searching BM25 index..."):
+            bm25_results = bm25_search(
+                query=query,
+                bm25=bm25_index,
+                metadata_rows=bm_25_metadata_rows,
+                top_k=top_k
+            )
+
+        if bm25_results:
+            for rank, (row, score) in enumerate(bm25_results, start=1):
+                render_result_card(
+                    rank = rank, 
+                    row = row, 
+                    score = score, 
+                    query = query,
+                    search_type = "bm25",
+                    score_label="BM25 Score"
+                )
+        else:
+            st.warning("No BM25 results found.")
+
+    elif search_mode == "Semantic Search":
+        st.markdown('<div class="section-title">Semantic Search Results</div>', unsafe_allow_html=True)
+
+        with st.spinner("Running semantic retrieval..."):
+            sem_results = semantic_search(
+                query=query,
+                index=faiss_index,
+                metadata_rows=semantic_metadata_rows,
+                model=model,
+                top_k=top_k
+            )
+
+        if sem_results:
+            for rank, (row, score) in enumerate(sem_results, start=1):
+                render_result_card(
+                    rank, 
+                    row, 
+                    score,
+                    query,
+                    search_type = "semantic",
+                    score_label="Similarity"
+                )
+        else:
+            st.warning("No semantic search results found.")
+    
+    elif search_mode == "Hybrid Search":
+        st.markdown('<div class="section-title">Hybrid Search Results</div>', unsafe_allow_html=True)
+
+        with st.spinner("Running hybrid retrieval..."):
+            hybrid_results = hybrid_search(
+                query = query, 
+                bm25_index = bm25_index,
+                bm25_metadata_rows = bm_25_metadata_rows,
+                faiss_index = faiss_index,
+                semantic_metadata_rows = semantic_metadata_rows,
+                model = model,
+                top_k = top_k,
+                candidate_multiplier = 3, # retrieves more than top k from each method before fusing the scores so the hybrid score has a better signal ex) If one method ranks a doc 2 and the otehr ranks it 12, having no candidate_multiplier results in only top 5 rankings compared compared, which could miss some similarities
+                rrf_k = 60 # RRF smoothing constant
+            )
+        
+        if hybrid_results:
+            for rank, (metadata_row, hybrid_score) in enumerate(hybrid_results, start = 1):
+                render_result_card(
+                    rank = rank, 
+                    row = metadata_row, 
+                    score = hybrid_score,
+                    query = query,
+                    search_type = "hybrid",
+                    score_label="Hybrid Score"
+                )
+        
+        else:
+            st.warning("No hybrid search results found.")
+else:
+    st.markdown(
+        """
+        <div class="result-card" style="border-left: 4px solid #232f3e;">
+            <div class="result-title">Try a search</div>
+            <div class="review-box">
+                Example queries:
+                <br><br>
+                • wireless earbuds for gym<br>
+                • travel laptop with long battery life<br>
+                • gaming mouse for fps games
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )

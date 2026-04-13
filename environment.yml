@@ -1,8 +1,28 @@
-name: dsci575-milestone
+name: amazon-retrieval
 channels:
   - conda-forge
+
 dependencies:
+  # core python
   - python=3.12
+
+  # conda packages 
+  - pandas=2.2.2
+  - numpy=1.26.*
+  - scikit-learn=1.5.0
+  - polars=1.39.3
+  - matplotlib=3.10.8
+  - seaborn=0.13.2
+  - tqdm=4.67.3
+  - ipykernel=7.2.0
+  - faiss-cpu=1.8.*
+
+  # pip section
   - pip
   - pip:
-      - -r requirements.txt
+      - rank-bm25==0.2.2
+      - sentence-transformers==3.0.1
+      - langchain==0.2.15
+      - langchain-community==0.2.13
+      - python-dotenv==1.0.1
+      - streamlit==1.36.0
