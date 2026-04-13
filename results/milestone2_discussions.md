@@ -1,0 +1,11 @@
+### Model Choice Justification 
+
+We chose the phi4-mini-instruct model using Ollama as it provides strong reasoning and logic when outputting results based on user instructions compared to other models in its size range. The phi4-mini model is good at generating reasonable responses given user instructions and the system prompt, so we chose this model as we can clearly specify in our system prompt to the LLM to "not falsify any information" and only output product information that comes directly from the product metadata top-k results, and not from its own memory.
+
+The phi4-mini model is also compute-constrained friendly, as its download size is only ~2.5 GB locally, which is minuscule compared to typical SSD memory sizes of 512 GB+ nowadays, and it typically uses only 4–8 GB of VRAM, which is supported by our laptops without being too computationally heavy.
+
+The model is also very strong in reasoning ability as it is trained on fewer parameters (3.8B) compared to much larger models but has similar reasoning ability to them based on the HuggingFace docs. A possible downside is that since phi4-mini was trained on fewer parameters, it might be factually incorrect sometimes, but this is easy to fix as phi4-mini provides a tool-enabled function calling format where the user can instruct the model to call specific functions that use certain tools in the system prompt. This allows the output to the user be even more grounded, as we could include a tool such as a search engine like Tavily in the input context window to make sure the LLMs output matches what is said about the product on the web.
+
+Last, the phi4-mini-instruct model also has a large context window and supports 128,000 tokens. This means that the combined total tokens of the input (user query, system prompt, previous chat history, and any attached documentation or embeddings such as product information) and the model's generated output of the context window from the model can be a maximum of 128K tokens, which is a large context window and provides enough space for us to pass a detailed system prompt along with long product metadata text for a large top-k to the phi4-mini model, meaning it can process a lot of product metadata information at once if top-k is high.
+
+***Referenced HuggingFace docs for phi4-mini use cases: https://huggingface.co/microsoft/Phi-4-mini-instruct
