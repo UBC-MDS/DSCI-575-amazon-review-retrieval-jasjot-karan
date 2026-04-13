@@ -8,4 +8,5 @@ The model is also very strong in reasoning ability as it is trained on fewer par
 
 Last, the phi4-mini-instruct model also has a large context window and supports 128,000 tokens. This means that the combined total tokens of the input (user query, system prompt, previous chat history, and any attached documentation or embeddings such as product information) and the model's generated output of the context window from the model can be a maximum of 128K tokens, which is a large context window and provides enough space for us to pass a detailed system prompt along with long product metadata text for a large top-k to the phi4-mini model, meaning it can process a lot of product metadata information at once if top-k is high.
 
+
 ***Referenced HuggingFace docs for phi4-mini use cases: https://huggingface.co/microsoft/Phi-4-mini-instruct
