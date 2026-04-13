@@ -190,3 +190,10 @@ Key findings:
 - **Semantic search** excels on intent-based natural language queries describing use cases
 - **Hybrid (RRF)** captures the strengths of both by rewarding documents ranked highly by either method
 - Both methods degrade on complex multi-constraint queries, motivating future reranking work
+
+## Authors
+
+| Name | GitHub |
+| --- | --- |
+| Jasjot Parmar | [@jasjotp](https://github.com/jasjotp) |
+| Karan Bains | [@kkaranbayns](https://github.com/karanbayns) |
