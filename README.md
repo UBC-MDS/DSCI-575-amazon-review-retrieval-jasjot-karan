@@ -118,6 +118,15 @@ Documents are then ranked by their combined hybrid score in descending order.
 
 This project uses a `conda` environment. To recreate it:
 
+First clone the repo: 
+
+```bash
+git clone https://github.com/UBC-MDS/DSCI-575-amazon-review-retrieval-jasjot-karan.git
+cd DSCI-575-amazon-review-retrieval-jasjot-karan
+```
+
+Then activate the environment:
+
 ```bash
 conda env create -f environment.yml
 conda activate amazon-retrieval
