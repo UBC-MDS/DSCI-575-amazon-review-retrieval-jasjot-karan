@@ -10,3 +10,77 @@ Last, the phi4-mini-instruct model also has a large context window and supports 
 
 
 ***Referenced HuggingFace docs for phi4-mini use cases: https://huggingface.co/microsoft/Phi-4-mini-instruct
+
+--- 
+
+### Choosing a Default System Prompt Variant
+
+#### System Prompt 1 
+
+```python
+SYSTEM_PROMPT_V1 = """You are an Amazon shopping assistant answering customer questions about products using retrieved product metadata and reviews.
+
+Mandatory rules. Any violation must result in immediate output rejection and reconstruction. No exceptions:
+
+- Use ONLY the information provided in the Product Context below (under Product Context). Do not rely on prior knowledge, outside sources, or assumptions about products not listed explicitly.
+- Every factual claim must be traceable to a specific product and that product's information in the context. Cite the corresponding ASIN in parentheses, e.g. (ASIN: B01ABC123), immediately after the claim.
+- Do not begin the response with filler affirmations, compliments to the user, or restatements of the question. Move directly to the answer.
+- Do not end the response with emojis, exclamations, or trailing questions.
+- Do not produce generic template-like answers. Every sentence must reference specific products, features, prices, ratings, or review content from the context.
+- Keep the answer concise, focused, and grounded, without any em dashes. Prefer a concise but informationally useful response that is formatted nicely for the end user; unless the question explicitly requires a longer comparison."""
+```
+
+##### Observations from System Prompt 1 
+
+We found that SYSTEM_PROMPT_V1 (below) resulted in too much of a concise response from the large document metadata ranking corpus as V1 produced a single-paragraph answer that recommended **Rank 5** (the heca tech tenkeyless mechanical keyboard, ASIN B0765131GQ) while ignoring Ranks 1–4. The model defaulted to the product with the most context / metadata (the heca tech has a full specification sheet in `description`, while Ranks 1–4 have empty descriptions), but in doing so it overrode the semantic retriever's relevance ranking without any explanation. Therefore, we expected system prompt 1 to help the LLM output a grounded response where each product recommendation is ranked from best math to lowest math, however, it mixed up rankings and recommended the 5th ranked product instead of the 1st ranked product. Over different user queries, I also observed the same pattern of SYSTEM_PROMPT_V1 mixing rankings and recommending a worse ranked result from semantic retrieval compared to the best one.
+
+#### System Prompt 2
+
+```python
+SYSTEM_PROMPT_V2 = """You are an Amazon shopping recommender answering customer questions about products using retrieved product metadata and reviews. Your goal is to return a ranked list of products from the Product Context below that match the user query. 
+
+Mandatory rules. Any violation must result in immediate output rejection and reconstruction. No exceptions:
+
+- Use ONLY the information provided in the Product Context below (under Product Context). Do not rely on prior knowledge, outside sources, or assumptions about products not listed explicitly.
+- The Product Context is ordered by retrieval relevance, with [Product rank: 1] being the most relevant to the user's query and higher ranks being progressively less relevant. Prioritize higher-ranked products in your answer unless the metadata clearly shows a higher-ranked product does not match the user's needs. If you recommend a lower-ranked product, briefly explain why.
+- Every factual claim must be traceable to a specific product and that product's information in the context. Cite the corresponding ASIN in parentheses, e.g. (ASIN: B01ABC123), immediately after the claim.
+- Do not begin the response with filler affirmations, compliments to the user, or restatements of the question. Move directly to the answer.
+- Do not end the response with emojis, exclamations, or trailing questions.
+- Do not produce generic template-like answers. Every sentence must reference specific products, features, prices, ratings, or review content from the context.
+- Keep the answer concise, focused, and grounded, without any em dashes. Prefer a concise but informationally useful response that is formatted nicely for the end user, unless the question explicitly requires a longer comparison."""
+```
+
+##### Observations from System Prompt 2
+
+Once I changed SYSTEM_PROMPT_V2 to include a line about prioritizing higher-ranked products in its answe, the LLM output become more grounded and reflective of the true rankings of the semantic retrieval. The LLM produced a per-product breakdown for the top 3 retrieved products from semantic search (Ranks 1, 2, and 3), along with their ASIN citation, price, rating, and product descriptions that are correctly based on the retrieved context (for example, the motospeed price of $35.98 and the 4-star rating for an output both came directly from that products metadata). The 2nd system prompt then outputs a final recommendation for one product to the user based on the relevant highest ranked products, as it typically uses the 1st ranked product to recommend and backs up its recommendation with product metadaa information such as positive review feedback. For example, for the query: "mechanical keyboard good at coding": this system prompt justified its choice by referencing a review snippet that mentioned that the keyboard is fine if it is used for office work compared to gaming, which is a reasonable signal that the keyboard would be "good for coding." Therefore, since this system prompt does not hallucinate, cites ASINs consistenly, outputs multiple product options, and then chooses a best recommendation based on these top k options while also explaining its reasoning instead of automatically choosing the top product, it is more robust and grounded than the other methods. Since system prompt 2 has a higher chain of reasoning compared to the other outputs from other system prompts, it typically gives more grounded output compared to system prompt 1. 
+
+However, V2 only outputted the top 3 out of the top 5 retrieved products instead of all 5 product rankings. For example, the product at rank 5 was dropped from consideration of being the best product to recommend, even though it had the most detailed product metadata (included a detailed description). Also, since V2 respects the semantic retrievers ranking and bases its product recommendation based on this, incorrect products can be recommended if the semantic retriever retrieves a weaker matching product as the highest ranked product. Another downside is that the output of V2 is pretty lengthy, which can lead to a lot of unneccessary token useage if our application were to scale up to a lot of users. 
+
+#### System Prompt 3
+
+```python
+SYSTEM_PROMPT_V3 = """You are a strict Amazon shopping assistant. Answer the user's question in a concise manner using only the Product Context below in a maximum of 5 sentences.
+
+Mandatory rules:
+
+- Use ONLY the Product Context. Any claim not directly supported by the context must be omitted. 
+- Cite the ASIN in square brackets for every product referenced, e.g. [B01ABC123].
+- Every sentence must include at least one ASIN citation. Sentences without citations are not allowed.
+- If the context is insufficient, respond with exactly this sentence and nothing else: "I do not have enough information to answer that. Please try searching another product."
+- Do not begin with affirmations, compliments, or filler phrases.
+- Do not end with emojis, exclamations, or questions.
+- Do not produce template-like or generic answers. Every sentence must contain specific, context-grounded detail.
+- Do not speculate about products outside the context, even if asked.
+- Do not include any information outside the final answer. Do not explain your reasoning or reference the instructions.
+"""
+```
+
+##### Observations from System Prompt 3
+
+Once I changed SYSTEM_PROMPT_V3 to focus less on output formatting rules and more on what the output itself should contain (a 5-sentence answer that is concise and recommends the best 1 or 2 products and explains why), the LLM output became much tighter while still being grounded in the retrieved context. For example, V3 produced 2 product recommendations for the query "mechanical keyboard good for coding": [B0BGS7Q951] as the top pick, citing the 4.5-star rating, 104 keys, and wired USB suitable for PC, Mac, or laptop, and [B0016H8YW2] as a second good option while also citing the specific review snippet that mentioned the user had owned the keyboard since 1999 and it still worked perfectly, and that it had a compact size for carrying. The Product ASIN citations showed up in every sentence and the output stayed within the 5-sentence limit we set in the system prompt without ignoring specific product context details like ratings and review snippets. Since V3 does not hallucinate, cites every product it references, and explains its reasoning with actual review content from the context, while also being concise, we chose System Prompt 3 for our LLM based on the requirement that output must be concise. 
+
+However, V3 has issues due to being too concise, which results in a less thorough comparison of products compared to V2. For example, V3 skipped the motospeed keyboard at rank 2 and jumped from rank 1 to rank 4 (happy hacking keyboard) for its second product recommendation, which makes V3's ranking aware recomemndation system worse compared to V2's outputs that typically follow ranking behavior better from the top k retrieved products. 
+
+The 5-sentence limit in V3 also means the LLM is not able to discuss tradeoffs between more than 2 products in detail, which means V3 is not as useful for queries that ask to compare multiple products, even though it works well for "give me the best product" style queries. Lastly, our instruction on having an ASIN citation or product information per sentence in the output sometimes forces the LLM to output awkward sentence structures that do contain citations, but do not flow naturally.
+
+Overall, V3 is better for when we want to output short answer recommendation queries where the user wants 1-2 top products with reasoning, while V2 is better  for broader comparison questions where the user wants to see more of the chain of thought reasoning steps of the LLM to see why specific products were recommended. V3 is our default prompt for the RAG pipeline since it provides a concise, more grounded summary that provides the user the ability to easily scan the output to see top products.

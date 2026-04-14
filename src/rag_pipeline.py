@@ -77,7 +77,7 @@ class RAGPipeline:
         self.retriever =  retriever
         self.model = model
 
-    def invoke(self, query: str, top_k: int, system_prompt_version: str, max_rows: int = None):
+    def invoke(self, query: str, top_k: int, system_prompt_version: str = 'V3', max_rows: int = None):
         docs = self.retriever.invoke(query = query, top_k = top_k)
         context = build_context(docs)
         system_prompt, user_message = build_prompt(query = query, context = context, prompt_version = system_prompt_version)
@@ -107,12 +107,13 @@ if __name__ == "__main__":
     retriever = SemanticRetriever()
     rag_pipeline = RAGPipeline(retriever = retriever, model = "phi4-mini")
 
+    # test query for our experiment
     query = 'Mechanical Keyboard that is good for coding'
 
     result = rag_pipeline.invoke(
         query = query,
         top_k = 5,
-        system_prompt_version = 'V2'
+        system_prompt_version = 'V3'
     )
 
     print(f"\n======= QUERY =======\n{result['query']}\n")
