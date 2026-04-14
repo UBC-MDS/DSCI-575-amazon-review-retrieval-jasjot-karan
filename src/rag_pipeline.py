@@ -81,7 +81,7 @@ class RAGPipeline:
         docs = self.retriever.invoke(query = query, top_k = top_k)
         context = build_context(docs)
         system_prompt, user_message = build_prompt(query = query, context = context, prompt_version = system_prompt_version)
-
+        
         # call the phi4-mini model using ollama
         # Referenced Ollama docs: https://ollama.com/library/phi4-mini
         response = chat(
@@ -95,17 +95,17 @@ class RAGPipeline:
             }
         )
         
-        # return the user query, answer, retrieved top k documents for the user query 
+        # return the user query, answer, retrieved top k documents for the user query (to possibly extend this and use it for quantatative evaluation such as faithfulness -> see if llm_answer contains actual product context from retrieved_docs)
         return {
             "query": query,
             "llm_answer": response.message.content,
             "retrieved_docs": docs,
             "prompt_version": system_prompt_version
         }
-
+ 
 if __name__ == "__main__":
-    retriever = SemanticRetriever()
-    rag_pipeline = RAGPipeline(retriever = retriever, model = "phi4-mini")
+    semantic_retriever = SemanticRetriever()
+    rag_pipeline = RAGPipeline(retriever = semantic_retriever, model = "phi4-mini")
 
     # test query for our experiment
     query = 'Mechanical Keyboard that is good for coding'

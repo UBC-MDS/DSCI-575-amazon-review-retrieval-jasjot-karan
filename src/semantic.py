@@ -165,7 +165,7 @@ def build_faiss_index_and_metadata(
             # used the following to help with justification, but chose HNSW due to its ANN approach to save speed: https://www.pinecone.io/learn/series/faiss/hnsw/ and https://github.com/facebookresearch/faiss/wiki/Guidelines-to-choose-an-index
             index = faiss.IndexHNSWFlat(
                 embedding_dim, 
-                M,
+                M, # number of neighbours each vertex connects to
                 faiss.METRIC_INNER_PRODUCT # this computes cosine similarity according to the docs (normalized embeddings + inner product): https://github.com/facebookresearch/faiss/wiki/MetricType-and-distances
             )
         
@@ -260,7 +260,7 @@ def semantic_search(
         normalize_embeddings = True # normalize for cosine similarity
     ).astype("float32")
     
-    # search the index for the top 5 most relevant embeddings
+    # search the index for the top k most relevant embeddings
     # referenced: https://www.pinecone.io/learn/series/faiss/hnsw/ for implementation help
     scores, indices = index.search(query_embedding, top_k)
 
@@ -326,6 +326,7 @@ def run_semantic_search(
     
     # if verbose is False, just return the results: (metadata_row, score)
     return results
+
 
 if __name__ == "__main__":
     TEST_QUERY = "wireless noise cancelling headphones"
