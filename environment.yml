@@ -16,6 +16,8 @@ dependencies:
   - tqdm=4.67.3
   - ipykernel=7.2.0
   - faiss-cpu=1.8.*
+  - langchain-ollama==1.1.0
+  - ollama==0.20.6
 
   # pip section
   - pip
