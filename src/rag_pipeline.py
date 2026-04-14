@@ -1,6 +1,9 @@
 '''
 Implements a RAG Pipeline using a Custom Retriever with Semantic Seach using FAISS HNSW indexes from semantic.py, 
 '''
+from ollama import chat
+from dotenv import load_dotenv 
+
 from semantic import (
     load_sentence_transformer_smodel,
     load_or_build_semantic_artifacts,
@@ -18,6 +21,8 @@ from prompts import (
     SYSTEM_PROMPT_V3,
     build_prompt
 )
+
+load_dotenv()
 
 def build_context(docs: list[tuple[dict, float]]): 
     '''
@@ -67,16 +72,59 @@ class SemanticRetriever:
             top_k = top_k
         )
 
+class RAGPipeline: 
+    def __init__(self, retriever, model = "phi4-mini"):
+        self.retriever =  retriever
+        self.model = model
+
+    def invoke(self, query: str, top_k: int, system_prompt_version: str, max_rows: int = None):
+        docs = self.retriever.invoke(query = query, top_k = top_k)
+        context = build_context(docs)
+        system_prompt, user_message = build_prompt(query = query, context = context, prompt_version = system_prompt_version)
+
+        # call the phi4-mini model using ollama
+        # Referenced Ollama docs: https://ollama.com/library/phi4-mini
+        response = chat(
+            model = self.model,
+            messages = [
+                {'role': 'system', 'content': system_prompt}, # system prompt sent to the LLM
+                {'role': 'user', 'content': user_message} # user message including the context to answer the user query with 
+            ],
+            options = {
+                "temperature": 0.0 # set temperature to 0 so we get more deterministic results and the most likely next tokens for each output without any randomness since we want grounded responses
+            }
+        )
+        
+        # return the user query, answer, retrieved top k documents for the user query 
+        return {
+            "query": query,
+            "llm_answer": response.message.content,
+            "retrieved_docs": docs,
+            "prompt_version": system_prompt_version
+        }
+
 if __name__ == "__main__":
-
     retriever = SemanticRetriever()
+    rag_pipeline = RAGPipeline(retriever = retriever, model = "phi4-mini")
 
-    docs = retriever.invoke(
-        'Mechanical Keyboard that is good for coding and makes a nice, clickly sound when typing',
-        top_k = 5
+    query = 'Mechanical Keyboard that is good for coding'
+
+    result = rag_pipeline.invoke(
+        query = query,
+        top_k = 5,
+        system_prompt_version = 'V2'
     )
 
-    product_context = build_context(docs)
-    print(product_context)
+    print(f"\n======= QUERY =======\n{result['query']}\n")
 
-c;ass 
+    print(f"\n======= LLM ANSWER =======\n{result['llm_answer']}\n")
+
+    print("======= TOP 5 RETRIEVED PRODUCTS =======")
+    for rank, (doc, score) in enumerate(result['retrieved_docs'], start = 1):
+        print(f"\n[Rank {rank}] Score: {score:.4f}")
+        print(f"  ASIN:   {doc.get('parent_asin')}")
+        print(f"  Title:  {doc.get('product_title')}")
+        print(f"  Rating: {doc.get('average_rating')}")
+        print(f"  Price: {doc.get('price')}")
+        print(f"  Description: {doc.get('description')}")
+        print(f"  Review snippets: {doc.get("review_text_200") or ""}")
