@@ -23,6 +23,8 @@ from semantic import (
     semantic_search
 )
 
+from hybrid import hybrid_search
+
 from prompts import (
     SYSTEM_PROMPT_V1,
     SYSTEM_PROMPT_V2,
@@ -118,7 +120,32 @@ class BM25Retriever:
             top_k = top_k
         )
 
+class HybridRetriever:
+    '''
+    Hybrid Retriever that combines BM25 keyword search and semantic vector search using Reciprocal
+    Rank Fusion (RRF). Uses top_k() from src/hybrid.py. 
 
+    Instantiated with: BM25Retriever and SemanticRetriever objects that each include (bm25_index and bm25_metadata_rows attributes) and (faiss_index, semantic_metadata_rows, and model) attrbibutes to pass precomputed objects into the hybrid_search() functions 
+    '''
+    def __init__(self):
+        self.bm25_retriever = BM25Retriever()
+        self.semantic_retriever = SemanticRetriever()
+
+    def invoke(self, query: str, top_k: int = 5, candidate_multiplier: int = 3, rrf_k: int = 60):
+        '''
+        invoke method calls the hybrid_search(...) function with the passed in (bm25_index and bm25_metadata_rows) attributes from BM25Retriever, (faiss_index, semantic_metadata_rows, and model) attributes from SemanticRetriever, along with the query, top_k, candidate_multiplier and rrf_k hyperparameters
+        '''
+        return hybrid_search(
+                query = query, 
+                bm25_index = self.bm25_retriever.bm25_index,
+                bm25_metadata_rows = self.bm25_retriever.bm25_metadata_rows,
+                faiss_index = self.semantic_retriever.faiss_index,
+                semantic_metadata_rows = self.semantic_retriever.metadata_rows,
+                model = self.semantic_retriever.embedding_model,
+                top_k = top_k,
+                candidate_multiplier = candidate_multiplier, # retrieves more than top k from each method before fusing the scores so the hybrid score has a better signal ex) If one method ranks a doc 2 and the otehr ranks it 12, having no candidate_multiplier results in only top 5 rankings compared compared, which could miss some similarities
+                rrf_k = rrf_k # RRF smoothing constant
+        )
 class RAGPipeline: 
     def __init__(self, retriever, model = "phi4-mini"):
         self.retriever =  retriever
@@ -152,7 +179,8 @@ class RAGPipeline:
  
 if __name__ == "__main__":
     semantic_retriever = SemanticRetriever()
-    rag_pipeline = RAGPipeline(retriever = semantic_retriever, model = "phi4-mini")
+    hybrid_retriever = HybridRetriever()
+    rag_pipeline = RAGPipeline(retriever = hybrid_retriever, model = "phi4-mini")
 
     # test query for our experiment
     query = 'Mechanical Keyboard that is good for coding'
