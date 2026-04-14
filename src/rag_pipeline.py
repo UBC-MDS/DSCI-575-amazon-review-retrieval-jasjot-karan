@@ -4,6 +4,14 @@ Implements a RAG Pipeline using a Custom Retriever with Semantic Seach using FAI
 from ollama import chat
 from dotenv import load_dotenv 
 
+from bm25 import (
+    load_or_build_search_artifacts, 
+    bm25_search,
+    TOKENIZED_PATH,
+    BM25_PATH as BM25_INDEX_PATH,
+    CHUNK_SIZE as BM25_CHUNK_SIZE
+)
+
 from semantic import (
     load_sentence_transformer_smodel,
     load_or_build_semantic_artifacts,
@@ -46,8 +54,17 @@ def build_context(docs: list[tuple[dict, float]]):
         all_context.append(context)
 
     return "\n\n=========\n\n".join(all_context)
+
 class SemanticRetriever:
-    def __init__(self, max_rows = None):
+    '''
+    Class defines a semantic retriever that uses cosine similarity search using FAISS HNSW indexes. 
+
+    Class attributes: 
+        - self.faiss_index: FAISS index already built/processed from load_or_build_semantic_artifacts(...) in semantic.py
+        - self.metadata_rows: product metadata rows, where each row is a dictionary containing (product attribute: value). Row index positions of metadata_rows from load_or_build_semantic_artifacts(...) match the index positions of the embeddings in the index, allowing us to find the product metadata row that corresponds to the embedding at index i.
+        - self.embedding_model: set to 'all-MiniLM-L6-v2 model' embedding model from load_sentence_transformer_smodel() in semantic.py
+    '''
+    def __init__(self):
         # initialize the retriever when it is called by loading or building our semantic artifacts needed for semantic retrieval (FAISS index and metadata rows for output)
         # this avoids re-loading our FAISS index and metadata rows, along with our sentece transformer "all-MiniLM-L6-v2" on each call to the Retiever so the FAISS Index, metadata rows, and sentence transformer are loaded for subsequent calls
         self.faiss_index, self.metadata_rows =  load_or_build_semantic_artifacts(
@@ -71,17 +88,47 @@ class SemanticRetriever:
             model = self.embedding_model,
             top_k = top_k
         )
+    
+class BM25Retriever:
+    '''
+    Class defines a BM25 retriever that uses the BM25 metric to retrieve relevant product metadata matching a user query. 
+
+    Class attributes: 
+        - self.bm25_index: BM25 index already built/processed from load_or_build_search_artifacts(...) in bm25.py
+        - self.metadata_rows: product metadata rows, where each row is a dictionary containing (product attribute: value). Index positions of the top k scores in bm25_index will be mapped to the top k index positions in metadata_rows to get the product metadata for top k retrieved results.
+    '''
+    def __init__(self):
+        # initialize the retriever when it is called by loading or building our semantic artifacts needed for BM25 retrieval so they do not have to be re-called constantly after a BM25 Retriever instance is initialized.
+        self.bm25_index, self.bm25_metadata_rows = load_or_build_search_artifacts(
+            corpus_path = CORPUS_PATH,
+            tokenized_path = TOKENIZED_PATH,
+            metadata_path = METADATA_PATH,
+            bm25_path = BM25_INDEX_PATH,
+            chunk_size = BM25_CHUNK_SIZE
+        )
+
+    def invoke(self, query: str, top_k: int = 5):
+        '''
+        Calls the bm25_search() function from bm25.py and returns a list of sorted tuples by similarity score in desc order, where each tuple at index i contains the i'th scoring product metadata, along with that products similarity score.
+        '''
+        return bm25_search(
+            query = query,
+            bm25 = self.bm25_index,
+            metadata_rows = self.bm25_metadata_rows,
+            top_k = top_k
+        )
+
 
 class RAGPipeline: 
     def __init__(self, retriever, model = "phi4-mini"):
         self.retriever =  retriever
         self.model = model
 
-    def invoke(self, query: str, top_k: int, system_prompt_version: str = 'V3', max_rows: int = None):
+    def invoke(self, query: str, top_k: int, system_prompt_version: str = 'V3'):
         docs = self.retriever.invoke(query = query, top_k = top_k)
         context = build_context(docs)
         system_prompt, user_message = build_prompt(query = query, context = context, prompt_version = system_prompt_version)
-        
+
         # call the phi4-mini model using ollama
         # Referenced Ollama docs: https://ollama.com/library/phi4-mini
         response = chat(
