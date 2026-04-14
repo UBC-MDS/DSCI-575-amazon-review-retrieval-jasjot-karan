@@ -38,24 +38,37 @@ class SemanticRetriever:
             top_k = top_k
         )
     
+def build_context(docs: list[tuple[dict, float]]): 
+    '''
+    Turns the retrieved content from a list of tuples: (product_metadata dict, score) into a single string that contains all top k ranked products' metadata
+    '''
+    all_context = []
 
+    for rank, (doc, _) in enumerate(docs, start = 1):
+        context = (
+            f"[Product rank: {rank}]\n"
+            f"ASIN: {doc.get('parent_asin', 'N/A')}\n"
+            f"Product Title: {doc.get('product_title', 'N/A')}\n"
+            f"Category: {doc.get('main_category', 'N/A')}\n"
+            f"Store: {doc.get('store', 'N/A')}\n"
+            f"Price: {doc.get('price', 'N/A')}\n"
+            f"Average Rating: {doc.get('average_rating', 'N/A')}\n"
+            f"Description: {(doc.get('description') or '')[:500]}\n"
+            f"Review snippets: {(doc.get('review_text_200') or '').strip()[:500]}\n"
+        )
+    
+        all_context.append(context)
 
-retriever = SemanticRetriever()
-docs = retriever.invoke(
-    'Mechanical Keyboard that is good for coding and makes a nice, clickly sound when typing',
-    top_k = 5
-)
+    return "\n\n=========\n\n".join(all_context)
 
-for rank, (product_metadata, semantic_score) in enumerate(docs, start = 1):
-    print(
-        f"""
-            Rank: {rank}\n
-            Product ID: {product_metadata.get('parent_asin', 'N/A')}\n
-            Product Title: {product_metadata.get('product_title', 'N/A')}\n
-            Category: {product_metadata.get('main_category', 'N/A')}\n
-            Price: {product_metadata.get('price', 'N/A')}\n
-            Rating Number: {product_metadata.get('rating_number', 'N/A')}\n
-            Description: {(product_metadata.get('description') or '')[:300]}\n
-            Review Snippets: {(product_metadata.get('review_text_200') or '')[:200]}\n\n
-        """
+if __name__ == "__main__":
+
+    retriever = SemanticRetriever()
+
+    docs = retriever.invoke(
+        'Mechanical Keyboard that is good for coding and makes a nice, clickly sound when typing',
+        top_k = 5
     )
+
+    product_context = build_context(docs)
+    print(product_context)

@@ -230,7 +230,7 @@ def load_or_build_semantic_artifacts(
 
         return index, metadata_rows
 
-    print("FAISS index and/or semantic metadata rows and embeddings are missing. Building from corpus...")
+    print("FAISS index and semantic metadata rows/embeddings are missing. Building from corpus...")
 
     index, metadata_rows =  build_faiss_index_and_metadata(
         corpus_path = corpus_path, 
