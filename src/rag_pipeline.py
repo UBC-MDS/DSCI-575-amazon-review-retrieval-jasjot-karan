@@ -12,6 +12,35 @@ from semantic import (
     semantic_search
 )
 
+from prompts import (
+    SYSTEM_PROMPT_V1,
+    SYSTEM_PROMPT_V2,
+    SYSTEM_PROMPT_V3,
+    build_prompt
+)
+
+def build_context(docs: list[tuple[dict, float]]): 
+    '''
+    Turns the retrieved content from a list of tuples: (product_metadata dict, score) into a single string that contains all top k ranked products' metadata
+    '''
+    all_context = []
+
+    for rank, (doc, _) in enumerate(docs, start = 1):
+        context = (
+            f"[Product rank: {rank}]\n"
+            f"ASIN: {doc.get('parent_asin', 'N/A')}\n"
+            f"Product Title: {doc.get('product_title', 'N/A')}\n"
+            f"Category: {doc.get('main_category', 'N/A')}\n"
+            f"Store: {doc.get('store', 'N/A')}\n"
+            f"Price: {doc.get('price', 'N/A')}\n"
+            f"Average Rating: {doc.get('average_rating', 'N/A')}\n"
+            f"Description: {(doc.get('description') or '')[:500]}\n"
+            f"Review snippets: {(doc.get('review_text_200') or '').strip()[:500]}\n"
+        )
+    
+        all_context.append(context)
+
+    return "\n\n=========\n\n".join(all_context)
 class SemanticRetriever:
     def __init__(self, max_rows = None):
         # initialize the retriever when it is called by loading or building our semantic artifacts needed for semantic retrieval (FAISS index and metadata rows for output)
@@ -37,29 +66,6 @@ class SemanticRetriever:
             model = self.embedding_model,
             top_k = top_k
         )
-    
-def build_context(docs: list[tuple[dict, float]]): 
-    '''
-    Turns the retrieved content from a list of tuples: (product_metadata dict, score) into a single string that contains all top k ranked products' metadata
-    '''
-    all_context = []
-
-    for rank, (doc, _) in enumerate(docs, start = 1):
-        context = (
-            f"[Product rank: {rank}]\n"
-            f"ASIN: {doc.get('parent_asin', 'N/A')}\n"
-            f"Product Title: {doc.get('product_title', 'N/A')}\n"
-            f"Category: {doc.get('main_category', 'N/A')}\n"
-            f"Store: {doc.get('store', 'N/A')}\n"
-            f"Price: {doc.get('price', 'N/A')}\n"
-            f"Average Rating: {doc.get('average_rating', 'N/A')}\n"
-            f"Description: {(doc.get('description') or '')[:500]}\n"
-            f"Review snippets: {(doc.get('review_text_200') or '').strip()[:500]}\n"
-        )
-    
-        all_context.append(context)
-
-    return "\n\n=========\n\n".join(all_context)
 
 if __name__ == "__main__":
 
@@ -72,3 +78,5 @@ if __name__ == "__main__":
 
     product_context = build_context(docs)
     print(product_context)
+
+c;ass 
