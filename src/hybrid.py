@@ -6,6 +6,7 @@ Rank Fusion (RRF).
 from collections import defaultdict
 from bm25 import bm25_search
 from semantic import semantic_search
+from tools import tavily_web_search
 
 def hybrid_search(
     query: str, 
@@ -85,11 +86,6 @@ def hybrid_search(
     ]
 
     return final_results 
-
-
-
-
-
 
 
 
