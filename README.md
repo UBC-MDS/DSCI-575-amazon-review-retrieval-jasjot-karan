@@ -5,7 +5,82 @@ A production-style information retrieval system built on Amazon Electronics revi
 Users can search, compare methods side-by-side, and provide thumbs up/down relevance feedback that gets persisted for evaluation.
 
 ---
+## RAG Pipeline Workflow 
 
+The pipeline has three stages: **Retrieval** (semantic similarity search over FAISS), **Context & Prompt Construction** (formatting retrieved products into a structured prompt for the LLM), and **Generation** (grounded answer from phi4-mini via Ollama).
+
+```mermaid
+flowchart TD
+    A[User Query] --> B[all-MiniLM-L6-v2<br/>Sentence Transformer]
+    B --> C[Normalized Query Embedding<br/>384-dim vector]
+    
+    C --> D[FAISS HNSW Index<br/>Inner Product / Cosine Similarity]
+    D --> E[Top-K Product Indices<br/>+ Similarity Scores]
+    
+    E --> F[Metadata Lookup<br/>metadata_rows dict]
+    F --> G[Top-K Retrieved Products<br/>with product metadata + similarity scores]
+    
+    G --> H[build_context<br/>combine top k products into a string]
+    H --> I[build_prompt<br/>system prompt + product context + user query]
+    
+    I --> J[phi4-mini LLM model via Ollama<br/>temperature=0.0]
+    J --> K[Grounded Answer with ASIN Citations]
+    
+    G --> L["Final Output Dict<br/>(Query + LLM Answer + Retrieved Docs + Prompt Version)"]
+    K --> L
+    
+    L --> M[LLM Answer]
+    
+    M --> N[User]
+    
+    subgraph Retrieval [Retrieval Stage]
+        B
+        C
+        D
+        E
+        F
+        G
+    end
+    
+    subgraph Context_Prompt [Context and Prompt Stage]
+        H
+        I
+    end
+    
+    subgraph Generation [Generation Stage]
+        J
+        K
+    end
+    
+    %% Force dark text on all nodes and subgraph titles for readability
+    classDef default fill:#ffffff,stroke:#333,color:#000
+    
+    style A fill:#e1f5ff,stroke:#0288d1,color:#000
+    style N fill:#e1f5ff,stroke:#0288d1,color:#000
+    style M fill:#c8e6c9,stroke:#388e3c,color:#000
+    style L fill:#c8e6c9,stroke:#388e3c,color:#000
+    
+    style B fill:#fff3e0,stroke:#f57c00,color:#000
+    style C fill:#fff3e0,stroke:#f57c00,color:#000
+    style D fill:#fff3e0,stroke:#f57c00,color:#000
+    style E fill:#fff3e0,stroke:#f57c00,color:#000
+    style F fill:#fff3e0,stroke:#f57c00,color:#000
+    style G fill:#fff3e0,stroke:#f57c00,color:#000
+    
+    style H fill:#f3e5f5,stroke:#7b1fa2,color:#000
+    style I fill:#f3e5f5,stroke:#7b1fa2,color:#000
+    
+    style J fill:#e8f5e9,stroke:#2e7d32,color:#000
+    style K fill:#e8f5e9,stroke:#2e7d32,color:#000
+    
+    style Retrieval fill:#fff8e1,stroke:#f57c00,color:#000
+    style Context_Prompt fill:#fce4ec,stroke:#7b1fa2,color:#000
+    style Generation fill:#e0f2e9,stroke:#2e7d32,color:#000
+```
+
+**Attribution**: Claude Sonnet 4.6 for syntax help with the Mermaid code after prompting it with the sequential steps in the RAG pipeline.
+
+---
 ## Project Structure
 
 ```text
