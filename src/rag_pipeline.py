@@ -3,6 +3,7 @@ Implements a RAG Pipeline using a Custom Retriever with Semantic Seach using FAI
 '''
 from ollama import chat
 from dotenv import load_dotenv 
+from tools import tavily_web_search
 
 from bm25 import (
     load_or_build_search_artifacts, 
@@ -147,14 +148,63 @@ class HybridRetriever:
                 rrf_k = rrf_k # RRF smoothing constant
         )
 class RAGPipeline: 
-    def __init__(self, retriever, model = "phi4-mini"):
+    def __init__(self, retriever, model = "phi4-mini", use_tools: bool = False):
         self.retriever =  retriever
         self.model = model
+        self.use_tools = use_tools
+
+    def _should_use_web_search(self, query: str) -> bool:
+        '''
+        Helper function that uses LLM (same model: phi4-mini) as a judge/router to determine whether the query needs information from the web or not. 
+        '''
+        SYSTEM_PROMPT = """
+            You are a routing assistant. Decide if a query needs live web search to answer accurately.\n
+            Reply with ONLY 'yes' or 'no'.\n\n
+            Use 'yes' if the query asks about:\n
+                - Current prices or costs\n
+                - Stock availability\n
+                - Latest/newest product versions\n
+                - Recent news or updates\n
+                - Where to buy something\n\n
+             Use 'no' if the query asks about:\n
+                - Product reviews or opinions\n
+                - Feature comparisons\n
+                - General product information\n
+                - Recommendations based on reviews
+        """
+
+        USER_QUERY = f"""Query: {query}\nNeeds web search? (yes/no)"""
+        
+        response = chat(
+            model = self.model,
+            messages = [
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": USER_QUERY}
+            ],
+            options = {"temperature": 0.0}
+        )
+
+        # return True if response to: Needs web search, is true else False
+        return response.message.content.strip().lower() == "yes"
 
     def invoke(self, query: str, top_k: int, system_prompt_version: str = 'V3'):
         docs = self.retriever.invoke(query = query, top_k = top_k)
         context = build_context(docs)
-        system_prompt, user_message = build_prompt(query = query, context = context, prompt_version = system_prompt_version)
+
+        # get the tool context if the LLM returns yes for we should use web search based on the query and the use_tools flag for the RAG Pipeline is set to True 
+        tool_context = ""
+        tool_used = None
+        if self.use_tools and self._should_use_web_search(query = query): 
+            tool_context = f"\n\n[Web Search Results]\n{tavily_web_search.invoke(query)}" # langhcain tools with @tool are called with .invoke(): https://docs.langchain.com/oss/python/integrations/retrievers/tavily
+            tool_used = "tavily_web_search"
+        
+        full_context = context + tool_context
+
+        system_prompt, user_message = build_prompt(
+            query = query, 
+            context = full_context, 
+            prompt_version = system_prompt_version
+        )
 
         # call the phi4-mini model using ollama
         # Referenced Ollama docs: https://ollama.com/library/phi4-mini
@@ -174,19 +224,21 @@ class RAGPipeline:
             "query": query,
             "llm_answer": response.message.content,
             "retrieved_docs": docs,
-            "prompt_version": system_prompt_version
+            "prompt_version": system_prompt_version,
+            "tool_used": tool_used
         }
  
 if __name__ == "__main__":
     semantic_retriever = SemanticRetriever()
     hybrid_retriever = HybridRetriever()
-    rag_pipeline = RAGPipeline(retriever = hybrid_retriever, model = "phi4-mini")
+    rag_pipeline = RAGPipeline(retriever = hybrid_retriever, model = "phi4-mini", use_tools = True)
 
     # test query for our experiment
     query = 'Mechanical Keyboard that is good for coding'
+    web_search_query = "What is the current price and availability and reviews of the Sony WH-1000XM6 in Canada? Different stores and their prices?"
 
     result = rag_pipeline.invoke(
-        query = query,
+        query = web_search_query,
         top_k = 5,
         system_prompt_version = 'V3'
     )
@@ -204,3 +256,5 @@ if __name__ == "__main__":
         print(f"  Price: {doc.get('price')}")
         print(f"  Description: {doc.get('description')}")
         print(f"  Review snippets: {doc.get("review_text_200") or ""}")
+        print(f"  Tool used: {result.get("tool_used", "N/A")}")
+
