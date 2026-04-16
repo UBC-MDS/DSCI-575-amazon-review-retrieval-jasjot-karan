@@ -4,8 +4,8 @@ combining BM25 keyword search and semantic vector search using Reciprocal
 Rank Fusion (RRF).
 '''
 from collections import defaultdict
-from bm25 import bm25_search
-from semantic import semantic_search
+from src.bm25 import bm25_search
+from src.semantic import semantic_search
 
 def hybrid_search(
     query: str, 
