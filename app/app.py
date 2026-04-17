@@ -4,6 +4,7 @@ Integrated with RAGPipeline for phi4-mini generation and Tavily web tools.
 '''
 import streamlit as st
 import sys
+import tavily
 from pathlib import Path
 from datetime import datetime, timezone
 
