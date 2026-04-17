@@ -5,7 +5,7 @@ from ollama import chat
 from dotenv import load_dotenv 
 from tools import tavily_web_search
 
-from bm25 import (
+from src.bm25 import (
     load_or_build_search_artifacts, 
     bm25_search,
     TOKENIZED_PATH,
@@ -13,7 +13,7 @@ from bm25 import (
     CHUNK_SIZE as BM25_CHUNK_SIZE
 )
 
-from semantic import (
+from src.semantic import (
     load_sentence_transformer_smodel,
     load_or_build_semantic_artifacts,
     CORPUS_PATH,
@@ -24,9 +24,9 @@ from semantic import (
     semantic_search
 )
 
-from hybrid import hybrid_search
+from src.hybrid import hybrid_search
 
-from prompts import (
+from src.prompts import (
     SYSTEM_PROMPT_V1,
     SYSTEM_PROMPT_V2,
     SYSTEM_PROMPT_V3,

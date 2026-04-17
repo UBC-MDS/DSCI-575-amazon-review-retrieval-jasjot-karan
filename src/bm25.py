@@ -6,7 +6,7 @@ import gc
 import numpy as np
 from rank_bm25 import BM25Okapi
 from pathlib import Path
-from utils import tokenize, get_total_rows, load_pickle_if_valid, save_pickle, load_tokenized_corpus_and_metadata_in_chunks, META_COLS
+from src.utils import tokenize, get_total_rows, load_pickle_if_valid, save_pickle, load_tokenized_corpus_and_metadata_in_chunks, META_COLS
 
 # make sure the data can be processed regardless of the directory we are in
 BASE_DIR = Path(__file__).resolve().parent.parent
