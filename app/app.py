@@ -4,14 +4,14 @@ Integrated with RAGPipeline for phi4-mini generation and Tavily web tools.
 '''
 import streamlit as st
 import sys
-import csv
 from pathlib import Path
-from datetime import datetime, timezone
+from datetime import Datetime, timezone
 
-# Ensure that src and local modules are discoverable
-sys.path.append(str(Path(__file__).resolve().parent.parent / "src"))
+ROOT_DIR = Path(__file__).resolve().parent.parent
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
 
-from bm25 import (
+from src.bm25 import (
     bm25_search, 
     load_or_build_search_artifacts,
     CORPUS_PATH as BM25_CORPUS_PATH,
@@ -20,7 +20,7 @@ from bm25 import (
     BM25_PATH,
     CHUNK_SIZE as BM25_CHUNK_SIZE
 )
-from semantic import (
+from src.semantic import (
     semantic_search, 
     load_or_build_semantic_artifacts,
     load_sentence_transformer_smodel,
@@ -30,10 +30,9 @@ from semantic import (
     CHUNK_SIZE as SEMANTIC_CHUNK_SIZE,
     EMBED_BATCH_SIZE
 )
-from hybrid import hybrid_search 
+from src.hybrid import hybrid_search 
 
-# Import your custom pipeline classes
-from rag_pipeline import RAGPipeline, HybridRetriever
+from src.rag_pipeline import RAGPipeline, HybridRetriever
 
 st.set_page_config(
     page_title="Amazon Electronics RAG Dashboard",
