@@ -3,7 +3,7 @@ Implements a RAG Pipeline using a Custom Retriever with Semantic Seach using FAI
 '''
 from ollama import chat
 from dotenv import load_dotenv 
-from tools import tavily_web_search
+from src.tools import tavily_web_search
 
 from src.bm25 import (
     load_or_build_search_artifacts, 
