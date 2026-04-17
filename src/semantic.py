@@ -17,7 +17,7 @@ import polars as pl
 from pathlib import Path
 from sentence_transformers import SentenceTransformer
 
-from src.utils import get_total_rows, load_pickle_if_valid, save_pickle, META_COLS
+from utils import get_total_rows, load_pickle_if_valid, save_pickle, META_COLS
 
 # make sure the data can be processed regardless of the directory we are in
 BASE_DIR = Path(__file__).resolve().parent.parent
