@@ -84,3 +84,50 @@ However, V3 has issues due to being too concise, which results in a less thoroug
 The 5-sentence limit in V3 also means the LLM is not able to discuss tradeoffs between more than 2 products in detail, which means V3 is not as useful for queries that ask to compare multiple products, even though it works well for "give me the best product" style queries. Lastly, our instruction on having an ASIN citation or product information per sentence in the output sometimes forces the LLM to output awkward sentence structures that do contain citations, but do not flow naturally.
 
 Overall, V3 is better for when we want to output short answer recommendation queries where the user wants 1-2 top products with reasoning, while V2 is better  for broader comparison questions where the user wants to see more of the chain of thought reasoning steps of the LLM to see why specific products were recommended. V3 is our default prompt for the RAG pipeline since it provides a concise, more grounded summary that provides the user the ability to easily scan the output to see top products.
+
+### Qualitative Evaluation for Hybrid RAG Workflow
+
+| Query ID | Query | Difficulty | Accuracy | Completeness | Fluency | Key Observations |
+| :--- | :--- | :--- | :---: | :---: | :---: | :--- |
+| **1** | wireless bluetooth headphones | Easy | Yes | Yes | Yes | High accuracy; it correctly mapped ASIN `B0BM9JZDCH` features (bass, mic, noise-canceling) without hallucinations. |
+| **2** | stainless steel water bottle 1 liter | Easy | Yes | Yes | Yes | Strong reasoning; it correctly identified the top result as a sleeve rather than the bottle itself, and noted the lack of a 1L bottle match. |
+| **11** | headphones that don’t last long on a charge | Medium | Yes | No | Yes | Accuracy is good because it found a model that doesn't last long on charge, but completeness is lacking as the LLM also suggested "good" battery models, ignoring the negative intent. |
+| **24** | office chair for back pain and long hours sitting | Difficult | No | No | Yes | It recommended a standing desk (ASIN `B07M9SFGBM`) instead of a chair, meaning that it misidentified the product category entirely. |
+| **29** | monitor for coding with high resolution and low eye strain | Difficult | Yes | Yes | No | The response became highly repetitive, recommending the same product twice and including meta-talk about "strictly adhering to instructions." |
+
+#### LLM Responses
+
+##### Query: wireless bluetooth headphones (Success)
+> I recommend [B0BM9JZDCH] for its wireless Bluetooth capabilities and features like deep bass built-in mic noise canceling, as well as compatibility with various devices including smartphones (ASIN B0BM9JZDCH). The second recommendation is [B08YVJN3GQ], which offers a durable hard case replacement specifically designed to fit Ultimate Ears UE true wireless Bluetooth earbuds and includes features like slip-proof design for easy carrying. Both products are highly rated, with an average rating of 4 or above (ASIN B0BM9JCH has no specified rating in the context).
+
+##### Query: stainless steel water bottle 1 liter (Refusal Success)
+> Based on your requirements for a stainless steel water bottle with at least one liter capacity, I recommend [B079L62G2J]. This product is specifically designed as an anti-slip silicone sleeve bottom protector that fits over hydro flasks and other bottles. It ensures the safety of chips in 32oz/40oz containers while providing great support to prevent slipping.
+> 
+> While there isn't a direct match for your exact specifications (1 liter capacity) within this context, [B079L62G2J] is closely related as it protects stainless steel water bottle bottoms and fits well with hydro flasks. If you need an unprotected 1-liter stainless steel water bottle itself without the silicone sleeve protector mentioned in these contexts, unfortunately there isn't enough information to recommend a product that meets your exact needs from this list of products provided.
+
+##### Query: headphones that don’t last long on a charge (Constraint Failure)
+> I recommend [B07TN3DVVL] for its 5 hours battery life which is longer than many other options listed here.
+> 
+> [Product rank: 2], B09CGKFQX3, has issues with charging and shutting off during use. Therefore it does not meet the criteria of lasting long on a charge.
+> [Product rank: 4], Sony mdr-nc40 headphones offer up to 40 hours battery life which is significantly longer than other options listed here.
+> 
+> Based solely on this information I would recommend [B07TN3DVVL] for its better balance between price and performance. The second recommendation, the Sony mdr-nc40 headphone (ASIN: B008H0GCBG), offers a much higher battery life but is significantly more expensive than JVC's offering.
+
+##### Query: office chair for back pain and long hours sitting (Accuracy Failure)
+> Based on your requirements, I recommend [B07M9SFGBM] (Stand steady tranzform - tranzendesk electric standing desk with shelf) as it allows you to switch from sit to stand almost instantly which can alleviate the discomfort caused by prolonged periods of sitting. Additionally, consider using a memory foam cushion like fellowes professional series back support for immediate relief while working at your current setup [B00P1JYPXI].
+
+##### Query: monitor for coding with high resolution and low eye strain (Fluency Failure)
+> Based on the provided context [ASIN: B089FPZG9J], I recommend this BenQ GW2283 monitor. It features dual HDMI connectivity suitable for media devices switching which could be beneficial if you use multiple monitors or want to connect different types of displays, such as a TV and computer screen simultaneously.
+> 
+> Additionally, it has adaptive brightness technology that can help reduce eye strain during long periods of coding [ASIN: B0C65J4WDP]. This Gigastone monitor also offers built-in speakers which could be useful if you prefer an all-in-one setup for your workspace. Both monitors have high resolutions and are designed to minimize the risk of eye fatigue, making them suitable choices given their contextually relevant features [ASIN: B00NF3EMNA], with a slightly higher average rating indicating good customer satisfaction.
+> 
+> However, since we need only recommend one product based on strict adherence to your instructions:
+> 
+> I would choose ASIN: B089FPZG9J for its combination of dual HDMI ports and adaptive brightness technology specifically mentioned in the context as being optimized for home & office use. This makes it a versatile choice that directly addresses both high resolution needs (1080p IPS display) [ASIN: B00NF3EMNA] with eye care features, which is essential when coding long hours to minimize strain on your eyes.
+> 
+> The final recommendation of ASIN: B089FPZG9J stands out due to its dual HDMI ports and adaptive brightness technology that are directly mentioned in the product context as being optimized for home & office use. This makes it a versatile choice suitable not only for high-resolution displays but also specifically designed with eye care features, which is essential when coding long hours [ASIN: B00NF3EMNA].
+
+
+
+
+
