@@ -251,7 +251,8 @@ ollama list           # confirm phi4-mini appears in the list
 
 ### Environment variables
 
-Copy `.env.example` to `.env` and fill in any values your local setup requires:
+Copy `.env.example` to `.env` and fill in any values (`TAVILY_API_KEY`) your local setup requires. You'll need a `TAVILY_API_KEY`. You can create one by signing up at
+[tavily.com](https://tavily.com/) and generating a key from the dashboard.
 
 ```bash
 cp .env.example .env
