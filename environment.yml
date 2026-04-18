@@ -16,6 +16,8 @@ dependencies:
   - tqdm=4.67.3
   - ipykernel=7.2.0
   - faiss-cpu=1.8.*
+  - langchain-ollama==1.1.0
+  - ollama==0.20.6
 
   # pip section
   - pip
@@ -26,3 +28,4 @@ dependencies:
       - langchain-community==0.2.13
       - python-dotenv==1.0.1
       - streamlit==1.36.0
+      - tavily-python==0.7.23
