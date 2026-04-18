@@ -127,7 +127,12 @@ Overall, V3 is better for when we want to output short answer recommendation que
 > 
 > The final recommendation of ASIN: B089FPZG9J stands out due to its dual HDMI ports and adaptive brightness technology that are directly mentioned in the product context as being optimized for home & office use. This makes it a versatile choice suitable not only for high-resolution displays but also specifically designed with eye care features, which is essential when coding long hours [ASIN: B00NF3EMNA].
 
+#### Limitations
+Based on the qualitative evaluation results, two limitations of the hybrid RAG workflow are:
 
+**Failure to handle negative intent and specific constraints:** The system struggled with queries requiring the retrieval of products based on negative characteristics. For instance, when asked for "headphones that don’t last long on a charge," the model successfully identified a relevant low-battery model but also included recommendations for headphones with long battery life, effectively ignoring the user's negative constraint.
+
+**Product category misidentification on difficult queries:** The workflow demonstrated an accuracy failure when processing complex queries. For example, when searching for an "office chair for back pain," the system retrieved and recommended an electric standing desk (ASIN B07M9SFGBM) instead of a chair, indicating that semantic similarity can lead to misidentifying the fundamental product category.
 
 
 
