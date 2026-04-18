@@ -107,7 +107,14 @@ flowchart TD
 
 ## Dataset
 
-This project uses the `meta_Electronics.jsonl` and `Electronics.jsonl` datasets from [Amazon Reviews 2023](https://amazon-reviews-2023.github.io/), which are products from the **Electronics** category. The dataset contains product metadata and customer reviews for 18 million+ electronics products sold on Amazon.
+This project uses the `meta_Electronics.jsonl` and `Electronics.jsonl` datasets from [Amazon Reviews 2023](https://amazon-reviews-2023.github.io/), which are products from the **Electronics** category.
+
+**Raw dataset sizes:**
+
+- `Electronics.jsonl`: **~18.3 million** customer reviews
+- `meta_Electronics.jsonl`: **~1.6 million** unique products
+
+**Subset used:** Because embedding and indexing 1.6 M products is computationally prohibitive, the preprocessing notebook samples **200,000 products** controlled by the constant `MAX_PRODUCTS = 200_000` in `notebooks/milestone1_exploration.ipynb`. Products are selected by taking the first 200 k distinct `parent_asin` values from the metadata file (in file order). Only reviews whose `parent_asin` appears in that 200 k set are retained. This gives a **200,000-row retrieval corpus**  with one document per product.
 
 Each document in the retrieval corpus is created by combining product metadata and review text into a single `retrieval_text` field. The following metadata columns are stored alongside each document for display:
 
@@ -131,17 +138,23 @@ Each document in the retrieval corpus is created by combining product metadata a
 
 ## Data Processing
 
-All preprocessing is handled in `notebooks/milestone1_exploration.ipynb`, which outputs a `retrieval_corpus.parquet` file to `data/processed/`. The key steps are:
+All preprocessing is handled in `notebooks/milestone1_exploration.ipynb`, which outputs a `retrieval_corpus.parquet` file to `data/processed/`.
 
-1. **Joining** product metadata with review text on `parent_asin`
-2. **Deduplicating** by `parent_asin` to keep one representative document per product
-3. **Constructing `retrieval_text`** by concatenating title, description, features, category, and review content into a single searchable string per product
-4. **Writing** the resulting dataframe to Parquet for efficient lazy loading downstream
+**Why Polars lazy evaluation?** The raw review file is ~18.3 M rows. Loading it eagerly with pandas would cause out-of-memory errors on most laptops. Instead, the notebook uses `pl.scan_ndjson()` to build a lazy query plan and `sink_parquet()` to stream results directly to disk in chunks, so that only the smaller subset of rows needed at each step are actually read into in RAM. This makes the full pipeline runnable on a standard laptop without any cloud compute.
+
+The key preprocessing steps are:
+
+1. **Streaming reads**: both JSONL files are opened with `pl.scan_ndjson()` (lazily to prevent OOM risk)
+2. **Sampling**: 200,000 unique `parent_asin` values are selected with `.unique().limit(200_000)`; both the metadata and reviews frames are then filtered to that set via a semi-join
+3. **Review aggregation**: reviews are grouped by `parent_asin`; review titles are joined into `all_review_titles` and the first 200 characters of combined review text are stored in `review_text_200`
+4. **Joining**: grouped reviews are left-joined onto product metadata so every product gets one corpus row even if it has no reviews
+5. **`retrieval_text` construction**: a single searchable string is built by concatenating the product title, main category, store, features, description, average rating, categories, all review titles, and the review text snippet so it is searchable by end uses.
+6. **Persisting final corpus**: the final frame is streamed to `data/processed/retrieval_corpus.parquet` via `sink_parquet()`
 
 At search time, `utils.py` handles two tokenization paths:
 
-- **Python tokenizer** (`tokenize()`) — used for short user queries: lowercases, strips non-alphanumeric characters, and removes English stop words
-- **Polars vectorized tokenizer** (`polars_tokenize_expr()`) — used for bulk corpus tokenization at index build time using Polars expressions for faster tokenization speed
+- **Python tokenizer** (`tokenize()`): used for short user queries: lowercases, strips non-alphanumeric characters, and removes English stop words
+- **Polars vectorized tokenizer** (`polars_tokenize_expr()`): used for bulk corpus tokenization at index build time using Polars expressions for faster tokenization speed
 
 ---
 
@@ -153,7 +166,7 @@ Implemented in `src/bm25.py` using the `rank_bm25` library.
 
 **Build path:** The corpus is loaded from Parquet in chunks, tokenized using the Polars vectorized expression, and used to construct a `BM25Okapi` index. Both the tokenized corpus and the BM25 index are persisted to disk as pickle files so they only need to be built once.
 
-**Fast path:** On subsequent runs, `load_or_build_search_artifacts()` checks for an existing BM25 index and metadata pickle — if both exist, they are loaded directly without re-reading the corpus at all.
+**Fast path:** On future runs, `load_or_build_search_artifacts()` checks for an existing BM25 index and metadata pickle, and if both exist, they are both loaded directly without re-reading the corpus at all, saving a lot of build time. 
 
 **Search:** The user's query is tokenized with the Python tokenizer, scored against the BM25 index with `get_scores()`, and the top-k results are selected using `np.argpartition` (avoids a full sort for speed).
 
@@ -161,7 +174,7 @@ Implemented in `src/bm25.py` using the `rank_bm25` library.
 
 Implemented in `src/semantic.py` using `sentence-transformers` and `FAISS`.
 
-**Model:** `all-MiniLM-L6-v2` — a fast, lightweight sentence embedding model that produces 384-dimensional normalized embeddings well-suited for cosine similarity search.
+**Model:** `all-MiniLM-L6-v2`: a lightweight sentence embedding model that produces 384-dimensional normalized embeddings well-suited for cosine similarity search.
 
 **Index:** FAISS `IndexHNSWFlat` with inner product metric (equivalent to cosine similarity on normalized embeddings). HNSW was chosen over `IndexFlatIP` for its approximate nearest neighbour approach, which gives substantially faster query times on large corpora with minimal recall loss.
 
@@ -170,6 +183,8 @@ Implemented in `src/semantic.py` using `sentence-transformers` and `FAISS`.
 **Fast path:** If the FAISS index and metadata pickle both exist, they are loaded directly. If only the index is missing but the embedding chunk `.npy` files exist, the index is rebuilt from those chunks without re-embedding the entire corpus.
 
 **Search:** The query is embedded with the same model (with `normalize_embeddings=True`), and `index.search()` returns the top-k nearest neighbours by cosine similarity.
+
+**Why chunk and persist embedding partitions?** Embedding 200,000 documents takes several minutes and can exhaust RAM if done in one pass. The build path splits the corpus into fixed-size chunks, embeds each one, and immediately writes the result to a numbered `.npy` file (`embedding_chunks/chunk_*.npy`). This gives the following benefits: (1) **persistence resilience**: if the process is interrupted for some reason, already-written chunks are not re-computed on the next run; (2) **less memory per chunk**: only one chunk of embeddings lives in RAM at a time during build; (3) **fast index rebuilds**: if the FAISS `.index` file is deleted but the `.npy` chunks still exist, the index is recreated from the saved chunks in seconds without re-embedding anything.
 
 ### Hybrid Search (RRF Fusion)
 
@@ -183,7 +198,7 @@ hybrid_score(doc) = 1 / (k + rank_bm25(doc)) + 1 / (k + rank_semantic(doc))
 
 Where `k = 60` is the standard RRF smoothing constant that dampens the influence of very high-ranked results and prevents any single method from dominating.
 
-Each retrieval method is run with a `candidate_multiplier` (default 3×) so that more candidates are considered before fusion — this ensures documents ranked highly by one method but outside the naive top-k of the other are still captured.
+Each retrieval method is run with a `candidate_multiplier` (default 3×) so that more candidates are considered before fusing each retrieval result together. This makes sure that documents ranked highly by one method but outside the naive top-k of the other method are still captured.
 
 Documents are then ranked by their combined hybrid score in descending order.
 
@@ -207,6 +222,41 @@ conda env create -f environment.yml
 conda activate amazon-retrieval
 ```
 
+### Ollama Setup (required for the RAG generation step)
+
+The LLM generation step runs **phi4-mini locally** via [Ollama](https://ollama.com). Install it before launching the app:
+
+#### macOS
+
+```bash
+brew install ollama
+# or download the installer from https://ollama.com/download
+```
+
+#### Linux
+
+```bash
+curl -fsSL https://ollama.com/install.sh | sh
+```
+
+**Windows**: download the installer from [https://ollama.com/download](https://ollama.com/download).
+
+Then start the Ollama server and pull the model:
+
+```bash
+ollama serve          # start the local server (leave this running)
+ollama pull phi4-mini # download the model (~2 GB, one-time)
+ollama list           # confirm phi4-mini appears in the list
+```
+
+### Environment variables
+
+Copy `.env.example` to `.env` and fill in any values your local setup requires:
+
+```bash
+cp .env.example .env
+```
+
 Key dependencies:
 
 | Package | Version | Purpose |
@@ -224,15 +274,38 @@ Key dependencies:
 
 ## Reproducing the Results
 
+#### Option A: Download pre-built artifacts (recommended to reproduce the app ASAP)
+
+Download `processed_data.zip` from the repo release: `Processed data artifacts v1.0.0 Latest` tag: `data-1.0.0`, unzip it, and move all the files inside into the `data/processed/` folder in the project directory. The zip extracts a folder where the files in the folder should be in `data/processed/` so the final layout looks like:
+
+```text
+data/processed/
+├── retrieval_corpus.parquet
+├── bm25_index.pkl
+├── faiss_index.index
+├── metadata_rows.pkl
+└── embedding_chunks/
+    └── chunk_*.npy
+```
+
+Once those files are in place you can skip the notebook and index-build steps entirely and run `streamlit run app/app.py` from the project directory to run the app on: `http://localhost:8501`
+
+#### Option B: Build from raw data
+
 ### 1. Prepare the Data
 
-Place the raw Amazon Electronics dataset files into `data/raw/`. Then run the preprocessing notebook to generate the retrieval corpus:
+Place the raw Amazon Electronics dataset files into `data/raw/`:
+
+- `Electronics.jsonl` (~18.3 M reviews)
+- `meta_Electronics.jsonl` (~1.6 M products)
+
+Then run the preprocessing notebook to generate the retrieval corpus:
 
 ```bash
 jupyter notebook notebooks/milestone1_exploration.ipynb
 ```
 
-This produces `data/processed/retrieval_corpus.parquet`.
+This streams both files using Polars lazy evaluation (`scan_ndjson`) and writes `data/processed/retrieval_corpus.parquet` containing 200,000 product documents.
 
 ### 2. Build the Search Indexes
 
@@ -254,7 +327,7 @@ Both scripts persist their artifacts to `data/processed/` so subsequent runs loa
 streamlit run app/app.py
 ```
 
-The app will be available at `http://localhost:8501`. On first launch, it builds and caches all search artifacts automatically — subsequent loads are near-instant.
+The app will be available at `http://localhost:8501`. On first launch, it builds and caches all search artifacts automatically so that future loading of artifacts is almost instant.
 
 ---
 
