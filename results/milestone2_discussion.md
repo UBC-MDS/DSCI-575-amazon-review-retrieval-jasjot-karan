@@ -132,7 +132,7 @@ Based on the qualitative evaluation results, two limitations of the hybrid RAG w
 
 **Failure to handle negative intent and specific constraints:** The system struggled with queries requiring the retrieval of products based on negative characteristics. For instance, when asked for "headphones that don’t last long on a charge," the model successfully identified a relevant low-battery model but also included recommendations for headphones with long battery life, effectively ignoring the user's negative constraint.
 
-**Product category misidentification on difficult queries:** The workflow demonstrated an accuracy failure when processing complex queries. For example, when searching for an "office chair for back pain," the system retrieved and recommended an electric standing desk (ASIN B07M9SFGBM) instead of a chair, indicating that semantic similarity can lead to misidentifying the fundamental product category.
+**Product category misidentification on difficult queries:** The workflow demonstrated an accuracy failure when processing complex queries. For example, when searching for an "office chair for back pain," the system retrieved and recommended an electric standing desk (ASIN `B07M9SFGBM`) instead of a chair, indicating that semantic similarity can lead to misidentifying the fundamental product category.
 
 
 
