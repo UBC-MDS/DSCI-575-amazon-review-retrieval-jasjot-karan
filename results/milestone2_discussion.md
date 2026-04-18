@@ -85,7 +85,7 @@ The 5-sentence limit in V3 also means the LLM is not able to discuss tradeoffs b
 
 Overall, V3 is better for when we want to output short answer recommendation queries where the user wants 1-2 top products with reasoning, while V2 is better  for broader comparison questions where the user wants to see more of the chain of thought reasoning steps of the LLM to see why specific products were recommended. V3 is our default prompt for the RAG pipeline since it provides a concise, more grounded summary that provides the user the ability to easily scan the output to see top products.
 
-### Qualitative Evaluation for Hybrid RAG Workflow
+### Qualitative Evaluation of Hybrid RAG Workflow
 
 | Query ID | Query | Difficulty | Accuracy | Completeness | Fluency | Key Observations |
 | :--- | :--- | :--- | :---: | :---: | :---: | :--- |
@@ -127,7 +127,28 @@ Overall, V3 is better for when we want to output short answer recommendation que
 > 
 > The final recommendation of ASIN: B089FPZG9J stands out due to its dual HDMI ports and adaptive brightness technology that are directly mentioned in the product context as being optimized for home & office use. This makes it a versatile choice suitable not only for high-resolution displays but also specifically designed with eye care features, which is essential when coding long hours [ASIN: B00NF3EMNA].
 
+#### Workflow Performance Improvement Suggestions
 
+##### 1. Integrate a Cross-Encoder Reranker
+**Current Issue:** RRF is excellent at merging search types, but it does not understand the semantic nuance of why a document was ranked. This is why accessories (sleeves) often rank higher than primary products (bottles) due to keyword overlap.
+**Suggestion:** Add a **Cross-Encoder** (e.g., `mixedbread-ai/mxbai-rerank-base-v1`) as a final verification step.
+* **How it works:** 1. Retrieve the top 15 results from your existing `hybrid_search`. 2. Pass the query and those 15 documents through the Reranker. 3. The reranker will identify that a "sleeve" is functionally different from a "bottle" and re-sort the results accordingly.
+* **Benefit:** This acts as a "sanity check" that prevents the LLM from ever seeing irrelevant items.
 
+##### 2. Implement Query-Time Metadata Filtering
+**Current Issue:** The current workflow relies on "soft" semantic matching for physical attributes like "1 Liter" or "Stainless Steel." If a product's description mentions "fits 1 Liter bottles," it may be incorrectly retrieved.
+**Suggestion:** Use a lightweight LLM call to extract **Hard Filters** from the user query before executing the search.
+* **Implementation:** 1. Parse the query: "1 liter stainless steel bottle" → `{ "capacity": "1L", "material": "stainless steel", "category": "bottle" }`.
+    2. Pass these as `filter` arguments to your Faiss/BM25 search.
+* **Benefit:** Programmatically excludes "silicone sleeves" or "plastic caps" from the search space entirely, ensuring the hybrid search only ranks valid candidates.
+
+##### 3. Transition to Structured Context Injection
+**Current Issue:** Small language models like `phi-4-mini` can struggle with "lost in the middle" or extraction errors when processing long, unstructured strings of product metadata.
+**Suggestion:** Transform your retrieved metadata into a **Structured Markdown Table** before injecting it into the LLM prompt.
+* **How it works:** Instead of giving a paragraph of text, it gives a table:
+    | ASIN | Product Name | Material | Capacity | Rating |
+    |---|---|---|---|---|
+    | B089... | Steel Flask | Stainless | 1.0L | 4.8 |
+* **Benefit:** This allows the model to use its reasoning capabilities to "scan" specific columns for constraints, drastically reducing the likelihood of recommending an item that only *partially* matches the user's request.
 
 
