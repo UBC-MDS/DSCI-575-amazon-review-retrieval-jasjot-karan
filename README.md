@@ -274,8 +274,6 @@ Key dependencies:
 
 ## Reproducing the Results
 
-### 1. Prepare the Data
-
 #### Option A: Download pre-built artifacts (recommended to reproduce the app ASAP)
 
 Download `processed_data.zip` from the repo release: `Processed data artifacts v1.0.0 Latest` tag: `data-1.0.0`, unzip it, and move all the files inside into the `data/processed/` folder in the project directory. The zip extracts a folder where the files in the folder should be in `data/processed/` so the final layout looks like:
@@ -293,6 +291,8 @@ data/processed/
 Once those files are in place you can skip the notebook and index-build steps entirely and run `streamlit run app/app.py` from the project directory to run the app on: `http://localhost:8501`
 
 #### Option B: Build from raw data
+
+### 1. Prepare the Data
 
 Place the raw Amazon Electronics dataset files into `data/raw/`:
 
