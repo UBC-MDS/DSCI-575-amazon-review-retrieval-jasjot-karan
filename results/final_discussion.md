@@ -3,6 +3,7 @@
 ## Step 1: Improve Your Workflow
 
 ### Dataset Scaling
+...
 
 ### LLM Experiment
 
@@ -86,7 +87,7 @@ Adherence to the mandatory rules in `SYSTEM_PROMPT_V3` varied noticeably across 
 
 ---
 
-- Overall Model Ranking for This Task
+##### Overall Model Ranking for This Task
 
 Based on the observations above, the three models can be ranked for this specific RAG-based product recommendation task as follows:
 
@@ -111,6 +112,7 @@ The `README.md` file was updated to make the repository cleaner and more profess
 - Added a Usage Examples section with five distinct query types mapped to their expected best retrieval methodSonnet 4.6Claude is AI and can make mistakes. Please double-check responses.
 
 ### Code Quality Changes
+...
 
 ## Step 4: Cloud Deployment Plan
 
