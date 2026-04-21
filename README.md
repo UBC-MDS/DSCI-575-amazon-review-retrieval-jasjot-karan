@@ -1,8 +1,8 @@
 # Amazon Electronics Product Retrieval
 
-A production-style information retrieval system built on Amazon Electronics review data. The system implements and compares three retrieval strategies: **BM25 keyword search**, **semantic vector search**, and a **hybrid approach** using Reciprocal Rank Fusion (RRF). The application surfaces results through a clean Streamlit UI modeled after the Amazon experience.
+A production-style information retrieval system built on Amazon Electronics review data. The system implements and compares three retrieval strategies: **BM25 keyword search**, **semantic vector search**, and a **hybrid approach** using Reciprocal Rank Fusion (RRF). The application surfaces results through a clean Streamlit UI modeled after the Amazon experience. Users can search, compare methods side-by-side, and provide thumbs up/down relevance feedback that gets persisted for evaluation.
 
-Users can search, compare methods side-by-side, and provide thumbs up/down relevance feedback that gets persisted for evaluation.
+[![Python](https://img.shields.io/badge/python-3.12-blue)](https://www.python.org/) [![Streamlit](https://img.shields.io/badge/streamlit-1.36.0-red)](https://streamlit.io/) [![FAISS](https://img.shields.io/badge/faiss--cpu-1.8.*-green)](https://github.com/facebookresearch/faiss) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ---
 ## RAG Pipeline Workflow 
