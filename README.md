@@ -387,4 +387,4 @@ A 30-query evaluation set (10 easy, 10 medium, 10 difficult) and a detailed comp
 | Name | GitHub |
 | --- | --- |
 | Jasjot Parmar | [@jasjotp](https://github.com/jasjotp) |
-| Karan Bains | [@kkaranbayns](https://github.com/karanbayns) |
+| Karan Bains | [@karanbayns](https://github.com/karanbayns) |
