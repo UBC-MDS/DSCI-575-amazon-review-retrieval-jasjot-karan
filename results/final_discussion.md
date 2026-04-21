@@ -4,9 +4,9 @@
 
 ### Models Used
 
--   **Model 1:** `microsoft/Phi-4-mini-instruct` (3.8B parameters) — via Ollama as `phi4-mini`
--   **Model 2:** `meta-llama/Llama-3.2-3B-Instruct` (3B parameters) — via Ollama as `llama3.2:3b`
--   **Model 3:** `Qwen/Qwen2.5-3B` (3B parameters) — via Ollama as `qwen2.5:3b`
+-   **Model 1:** `microsoft/Phi-4-mini-instruct` (3.8B parameters) - via Ollama as `phi4-mini`
+-   **Model 2:** `meta-llama/Llama-3.2-3B-Instruct` (3B parameters) - via Ollama as `llama3.2:3b`
+-   **Model 3:** `Qwen/Qwen2.5-3B` (3B parameters) - via Ollama as `qwen2.5:3b`
 
 ------------------------------------------------------------------------
 
@@ -50,11 +50,11 @@ Mandatory rules:
 
 Each model exhibited a distinct generation style that persisted across all five queries, suggesting these differences reflect fundamental tendencies of the model rather than query-specific variation.
 
-- **`Phi-4-mini-instruct`** consistently produced conversational, review-grounded responses. Before making a recommendation, it typically restated the user's need and framed its reasoning in terms of product metadata — ratings, review sentiment, and feature descriptions. This makes its outputs feel the most natural and user-friendly of the three, closely resembling how a knowledgeable human shopper might explain a recommendation. However, this style occasionally led to verbose responses that exceeded the 5-sentence constraint specified in `SYSTEM_PROMPT_V3`.
+- **`Phi-4-mini-instruct`** consistently produced conversational, review-grounded responses. Before making a recommendation, it typically restated the user's need and framed its reasoning in terms of product metadata, such as ratings, review sentiment, and feature descriptions. This makes its outputs feel the most natural and user-friendly of the three, closely resembling how a knowledgeable human shopper might explain a recommendation. However, this style occasionally led to verbose responses that exceeded the 5-sentence constraint specified in `SYSTEM_PROMPT_V3`.
 
 - **`Llama-3.2-3B-Instruct`** adopted a more structured, enumeration-driven style. It frequently prefixed responses with explicit product rank labels (e.g. `[Product rank: 1]`) and followed a formulaic pattern: rank → ASIN → justification. While this makes the reasoning chain easy to follow, it can feel mechanical and less tailored to the user's actual question. This style also caused Llama to surface retrieval rank as a primary signal, even when higher-ranked products were not the best fit for the query.
 
-- **`Qwen2.5-3B`** struck a middle ground — producing fluent, natural-language prose similar in tone to Phi-4, but with slightly less depth when referencing specific review details. Qwen tended to make confident product recommendations with clean sentence structure and good adherence to the citation rule. Compared to Phi-4, it was more concise, though this sometimes came at the cost of justification detail.
+- **`Qwen2.5-3B`** produced fluent, natural-language prose similar in tone to Phi-4, but with slightly less depth when referencing specific review details. Qwen tended to make confident product recommendations with clean sentence structure and good adherence to the citation rule. In comparison to Phi-4, it was more concise, although this sometimes came at the cost of justification detail.
 
 ---
 
@@ -62,9 +62,9 @@ Each model exhibited a distinct generation style that persisted across all five 
 
 All three models successfully grounded their recommendations in the retrieved product context and cited ASINs in most responses. However, meaningful differences emerged when queries were ambiguous or when retrieved documents were remotely related to the user's query.
 
-- **Straightforward queries** (e.g. *"speaker loud bass"*, *"charger cable that stops working quickly"*) produced strong alignment across all models. Each correctly identified the most relevant ASINs and referenced metadata — such as average ratings, review snippets, and feature descriptions — to justify recommendations.
+- **Straightforward queries** (e.g. *"speaker loud bass"*, *"charger cable that stops working quickly"*) produced strong alignment across all models. Each correctly identified the most relevant ASINs and referenced metadata, such as average ratings, review snippets, and feature descriptions to justify recommendations.
 
-- **Ambiguous queries** exposed clear differences in interpretation strategy. For *"chair that hurts your back after sitting"*, the intent is likely to find an ergonomic or supportive chair — but the top-retrieved document (`[B08ZSLRF2H]`) was a green screen backdrop, not a chair at all. Phi-4 and Qwen both attempted to reinterpret the query constructively, pivoting to ergonomic alternatives like a standing desk (`[B07M9SFGBM]`) or back support cushion (`[B00P1JYPXI]`). Llama, by contrast, defaulted to the retrieval-ranked ordering and surfaced the green screen product first, only mentioning the back support as a secondary result — a less helpful response given the query's clear ergonomic intent.
+- **Ambiguous queries** exposed clear differences in interpretation strategy. For *"chair that hurts your back after sitting"*, the intent is likely to find an ergonomic or supportive chair — but the top-retrieved document (`[B08ZSLRF2H]`) was a green screen backdrop, not a chair at all. Phi-4 and Qwen both attempted to reinterpret the query constructively, pivoting to ergonomic alternatives like a standing desk (`[B07M9SFGBM]`) or back support cushion (`[B00P1JYPXI]`). Llama, by contrast, defaulted to the retrieval-ranked ordering and surfaced the green screen product first, only mentioning the back support as a secondary result, which is a less helpful response given the query's clear ergonomic intent.
 
 - **Hallucination and over-reach:** Phi-4 occasionally made inferences that went slightly beyond what the product context supported. For example, in the *"speaker not loud enough for a room"* query, it referenced an IPX7 water-resistance rating and specific decibel figures that may not have appeared in the retrieved context verbatim. This suggests Phi-4 is more prone to supplementing retrieved evidence with parametric knowledge, which violates the `SYSTEM_PROMPT_V3` constraint to use *only* the Product Context.
 
@@ -74,7 +74,7 @@ All three models successfully grounded their recommendations in the retrieved pr
 
 Adherence to the mandatory rules in `SYSTEM_PROMPT_V3` varied noticeably across models, particularly for formatting constraints and citation requirements.
 
-- **`Phi-4-mini-instruct`** showed strong overall instruction following, consistently citing ASINs and avoiding filler openers. Its main weakness was length control — several responses exceeded the 5-sentence limit, especially when it chose to recommend two products and justify both in detail. It also occasionally used raw newline escape sequences (`\n\nI would also...`) in its output rather than actual line breaks, indicating some inconsistency in how it handles formatting within the generation.
+- **`Phi-4-mini-instruct`** showed strong overall instruction following, consistently citing ASINs and avoiding filler openers. Its main weakness was length control because several responses exceeded the 5-sentence limit, especially when it chose to recommend two products and justify both in detail. It also occasionally used raw newline escape sequences (`\n\nI would also...`) in its output rather than actual line breaks, indicating some inconsistency in how it handles formatting within the generation.
 
 - **`Llama-3.2-3B-Instruct`** was the weakest in terms of clean formatting. It regularly emitted raw escape sequences (`\n`, `\\n`) as literal text within responses, and sometimes reproduced internal template-like labels (e.g. `[Product rank: 1]`, `[ASIN: B00...]`) that were likely artifacts of its instruction-tuning format leaking into the output. This suggests that at 3B scale, Llama has difficulty fully separating structured reasoning from free-form generation. Despite these artifacts, it was reasonably consistent in citing ASINs and respecting the sentence-count limit.
 
