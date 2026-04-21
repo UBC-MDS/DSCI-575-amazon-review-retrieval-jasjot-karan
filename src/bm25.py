@@ -147,17 +147,17 @@ def search_products_bm25(query: str, top_k: int = 5, max_rows: int | None = None
     '''
     # add suffix at the filepaths indicating number of rows for testing if we test a smaller subset
     tokenized_path = (
-        f"{DATA_DIR}/tokenized_corpus_{max_rows}.pkl"
+        DATA_DIR / f"tokenized_corpus_{max_rows}.pkl"
         if max_rows is not None else TOKENIZED_PATH
     )
 
     metadata_path = (
-        f"{DATA_DIR}/metadata_rows_{max_rows}.pkl"
+        DATA_DIR / f"metadata_rows_{max_rows}.pkl"
         if max_rows is not None else METADATA_PATH
     )
 
     bm25_path = (
-        f"{DATA_DIR}/bm25_index_{max_rows}.pkl"
+        DATA_DIR / f"bm25_index_{max_rows}.pkl"
         if max_rows is not None else BM25_PATH
     )
 
