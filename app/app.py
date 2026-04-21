@@ -79,7 +79,7 @@ st.markdown(AMAZON_CSS, unsafe_allow_html=True)
 # INITIALIZATION
 @st.cache_resource
 def get_pipeline():
-    # Initialize the hybrid retriever (loads FAISS and BM25 artifacts)
+    '''Initializes and caches the HybridRetriever-backed RAGPipeline for the Streamlit session.'''
     retriever = HybridRetriever()
     # Create the pipeline with phi4-mini and web tools enabled
     return RAGPipeline(retriever=retriever, model="phi4-mini", use_tools=True)
@@ -97,6 +97,7 @@ top_k = st.slider("Context Documents", 1, 10, 5)
 tab_search, tab_rag = st.tabs(["🔍 Search Results", "🤖 RAG Answer"])
 
 def render_result_card(rank, row, score, is_source=False):
+    '''Renders a styled HTML product card with title, rating, and review snippet in the Streamlit UI.'''
     title = row.get("product_title", "N/A")
     rating = row.get("average_rating", "N/A")
     snippet = (row.get("review_text_200") or "No review available.")[:200]

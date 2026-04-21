@@ -1,10 +1,25 @@
 # Amazon Electronics Product Retrieval
 
-A production-style information retrieval system built on Amazon Electronics review data. The system implements and compares three retrieval strategies: **BM25 keyword search**, **semantic vector search**, and a **hybrid approach** using Reciprocal Rank Fusion (RRF). The application surfaces results through a clean Streamlit UI modeled after the Amazon experience.
+A production-style information retrieval system built on Amazon Electronics review data. The system implements and compares three retrieval strategies: **BM25 keyword search**, **semantic vector search**, and a **hybrid approach** using Reciprocal Rank Fusion (RRF). The application surfaces results through a clean Streamlit UI modeled after the Amazon experience. Users can search, compare methods side-by-side, and provide thumbs up/down relevance feedback that gets persisted for evaluation.
 
-Users can search, compare methods side-by-side, and provide thumbs up/down relevance feedback that gets persisted for evaluation.
+[![Python](https://img.shields.io/badge/python-3.12-blue)](https://www.python.org/) [![Streamlit](https://img.shields.io/badge/streamlit-1.36.0-red)](https://streamlit.io/) [![FAISS](https://img.shields.io/badge/faiss--cpu-1.8.*-green)](https://github.com/facebookresearch/faiss) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ---
+
+## Table of Contents
+ 
+- [RAG Pipeline](#rag-pipeline-workflow)
+- [Project Structure](#project-structure)
+- [Dataset](#dataset)
+- [Data Processing](#data-processing)
+- [Retrieval Workflows](#retrieval-workflows)
+- [Environment Setup](#environment-setup)
+- [Reproducing the Results](#reproducing-the-results)
+- [Usage Examples](#usage-examples)
+- [User Feedback & Evaluation](#user-feedback--evaluation)
+- [Authors](#authors)
+---
+
 ## RAG Pipeline Workflow 
 
 The pipeline has three stages: **Retrieval** (semantic similarity search over FAISS), **Context & Prompt Construction** (formatting retrieved products into a structured prompt for the LLM), and **Generation** (grounded answer from phi4-mini via Ollama).
@@ -332,20 +347,38 @@ The app will be available at `http://localhost:8501`. On first launch, it builds
 
 ---
 
-## User Feedback
-
-The app includes a relevance feedback mechanism on every result card. Clicking thumbs up (relevant) or thumbs down (not relevant) appends a record to `feedback/user_feedback.csv` with the query, search type, rank, score, and product metadata. This data can be used to compute precision@k and other IR metrics offline.
-
+## Usage Examples
+ 
+Once the app is running, try the following example queries to see how each retrieval method performs:
+ 
+| Query Type | Example | Expected Best Method |
+|---|---|---|
+| **Brand + model number** | `"Sony WH-1000XM5 noise cancelling"` | BM25 |
+| **Technical spec** | `"USB 3.2 Gen 2 SSD 1TB"` | BM25 |
+| **Intent / use-case** | `"headphones good for working from home"` | Semantic |
+| **Problem-based** | `"camera for hiking and outdoor photography"` | Semantic |
+| **Multi-constraint** | `"fast USB-C hub with HDMI for MacBook under $50"` | Hybrid |
+ 
 ---
 
-## Qualitative Evaluation
-
+## User Feedback & Evaluation
+ 
+### Relevance Feedback
+ 
+Every result card in the app includes a thumbs up (relevant) / thumbs down (not relevant) button. Clicking either appends a record to `feedback/user_feedback.csv` with the following fields:
+ 
+- `query`, `search_type`, `rank`, `score`
+- `parent_asin`, `product_title`, `store`, `price`, `average_rating`
+This data can be used to compute precision@k and other IR metrics offline.
+ 
+### Qualitative Evaluation
+ 
 A 30-query evaluation set (10 easy, 10 medium, 10 difficult) and a detailed comparison of BM25 vs. semantic retrieval is documented in [results/milestone1_discussion.md](results/milestone1_discussion.md).
-
-Key findings:
-
-- **BM25** excels on technical/factoid queries with exact measurements or brand names
-- **Semantic search** excels on intent-based natural language queries describing use cases
+ 
+**Key findings:**
+ 
+- **BM25** excels on technical/factoid queries with exact measurements, model numbers, or brand names
+- **Semantic search** excels on intent-based natural language queries describing use cases or scenarios
 - **Hybrid (RRF)** captures the strengths of both by rewarding documents ranked highly by either method
 - Both methods degrade on complex multi-constraint queries, motivating future reranking work
 
@@ -354,4 +387,4 @@ Key findings:
 | Name | GitHub |
 | --- | --- |
 | Jasjot Parmar | [@jasjotp](https://github.com/jasjotp) |
-| Karan Bains | [@kkaranbayns](https://github.com/karanbayns) |
+| Karan Bains | [@karanbayns](https://github.com/karanbayns) |
