@@ -101,6 +101,42 @@ All three models are competitive for a 3B parameter class, and the differences m
 
 ------------------------------------------------------------------------
 
+## Step 2: Tool Integration Examples
+
+The web search tool was used on the 3 queries below and produced more relevant, current responses compared to running the pipeline without web search. The web search tool is triggered by an LLM-based router (phi4-mini) that evaluates each user query itself and decides whether live web data is needed. If the user query mentions current stock availability, prices, where to buy the item, or recent news and updates about the product, the router outputs "yes" and Tavily web search is called, appending the web search results to the local retrieval context before the final answer is generated. If the query is about product reviews, feature comparisons, or general recommendations, the router outputs "no" and only the local retrieval is used, which avoids unneeded web calls that would increase inference time for users.
+
+### Example 1: Current Price and Availability
+
+**Query:** *"What is the current price and stock availability of the Apple AirPods Pro 2 on Amazon and Best Buy as of today?"*
+
+- **Without tool:** Response is based on the static 2023 Amazon product metadata and output says that "the current price is not provided in Amazon's Product Context and Best Buy stock availability cannot be determined as they are third-party retailers outside of this context". 
+  information stale, no retailer comparison, no stock status.
+- **With tool:** Response included current price of Airpods Pro 2 on Amazon: $349 and says that the price is around the same at Best Buy, however, the exact price today cannot be confirmed for sure. The output is not overconfident and recommends checking product: B08D7X494N (Airpods Pro 2) on Amazon, and to visit Apple's website to get officail product information and prices today. 
+- **Conclusion with Web Search:** Clear improvement with web search. Static product metadata corpus cannot answer time-sensitive pricing questions and mentions it does not contain pricing or stock availability. Tavily fills this gap and mentions the price of the product and to check a specific product on Amazon, and also to visit Apple's website to get up to date stock availability information. 
+
+### Example 2: Latest Product Version
+**Query:** *"What is the newest version of a Keychron K3 mechanical keyboard and the current price nowadays?"*
+
+- **Without tool:** The system retrieved a few related but not matching
+  mechanical keyboards from the 2023 Amazon corpus (ASINs B07YJRWQDL, 
+  B08YJ7VXYR, B07NQ2HXC5), none of which are actually Keychron K3 
+  keyboards. The LLM honestly flagged this shortcoming and responded: "I do not have enough information to answer that. Please try searching another product."
+- **With tool:** Tavily returned up-to-date information on the current 
+  Keychron K3 keyboards that included the newest version (K3 Max / Pro 
+  variants) and also returned pricing from the official Keychron site .
+- **Conclusion with Web Search:** Clear improvement with web search. Our 2023 Amazon Electronics product metdata does not have the Keychron K3 in it, so local retrieval could only return related, older Keychron keyboards. This web search helped with answering queries about newer product generations of the Keychron keyboard series.
+
+### Example 3: Where to Buy
+**Query:** *"Where can I buy the Samsung Galaxy Buds 3 Pro in Canada right now, and what are the best deals available?"*
+
+- **Without tool:** Local retrieval without web search returned mostly 
+  products tbat were not relevant or related to the user query, such as  a Samsung earbud accessory/replacement part ([ASIN: B09M3TDJZ6]) from 
+  iiexcel on Amazon for $9.99, and an an incompatible product ([ASIN: B09Q35KXVS]). The LLM did honestly mention that it could not actually answer the question and outputted that the retrieved products "do not match the Samsung Galaxy Buds 3 Pro" and that the local product corpus does not provide Canadian availability information.
+- **With tool:** Tavily web search added Walmart.ca as a Canadian retailer that carries the earbuds, but the response was still not trustworthy as it did not include current pricing or stock availability in Canada from Walmart or any other site for the actual Galaxy Buds 3 Pro. The first product returned in the response with web search was also still the irrelevant $9.99 accessory (not the actual earbuds) that was retrieved directly from the local product metadata corpus.
+- **Conclusion with Web Search:** Web search gave us a partial imporvement. Tavily added one Canadian retailer (Walmart) that the static corpus could not add since it is US based, but the overall response was still weak because the main product outputted as a recommendation was still from our local Amazon product metadata context and was not related to the user query about the actual product directly. Therefore, we saw that when local product retrieval from the static corpus returns low-quality matches, final output from the LLM can let that dominate and not include much of the web search's context.  
+
+------------------------------------------------------------------------
+
 ## Step 3: Improve Documentation and Code Quality
 
 ### Documentation Update
