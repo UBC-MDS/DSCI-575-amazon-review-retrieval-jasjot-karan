@@ -332,6 +332,20 @@ The app will be available at `http://localhost:8501`. On first launch, it builds
 
 ---
 
+## Usage Examples
+ 
+Once the app is running, try the following example queries to see how each retrieval method performs:
+ 
+| Query Type | Example | Expected Best Method |
+|---|---|---|
+| **Brand + model number** | `"Sony WH-1000XM5 noise cancelling"` | BM25 |
+| **Technical spec** | `"USB 3.2 Gen 2 SSD 1TB"` | BM25 |
+| **Intent / use-case** | `"headphones good for working from home"` | Semantic |
+| **Problem-based** | `"camera for hiking and outdoor photography"` | Semantic |
+| **Multi-constraint** | `"fast USB-C hub with HDMI for MacBook under $50"` | Hybrid |
+ 
+---
+
 ## User Feedback
 
 The app includes a relevance feedback mechanism on every result card. Clicking thumbs up (relevant) or thumbs down (not relevant) appends a record to `feedback/user_feedback.csv` with the query, search type, rank, score, and product metadata. This data can be used to compute precision@k and other IR metrics offline.
