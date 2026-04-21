@@ -149,7 +149,7 @@ class HybridRetriever:
                 rrf_k = rrf_k # RRF smoothing constant
         )
 class RAGPipeline: 
-    def __init__(self, retriever, model = "phi4-mini", use_tools: bool = False):
+    def __init__(self, retriever, model = "qwen2.5", use_tools: bool = False):
         '''Initializes the RAG pipeline with a retriever, Ollama model, and optional Tavily web search.'''
         self.retriever =  retriever
         self.model = model
@@ -232,7 +232,7 @@ class RAGPipeline:
 if __name__ == "__main__":
     semantic_retriever = SemanticRetriever()
     hybrid_retriever = HybridRetriever()
-    rag_pipeline = RAGPipeline(retriever = hybrid_retriever, model = "phi4-mini", use_tools = True)
+    rag_pipeline = RAGPipeline(retriever = hybrid_retriever, model="qwen2.5", use_tools = True)
 
     # test query for our experiment
     query = 'Mechanical Keyboard that is good for coding'
