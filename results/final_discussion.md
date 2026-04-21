@@ -1,8 +1,12 @@
 # Final Discussion
 
-## 1.2: Experiment with the LLM
+## Step 1: Improve Your Workflow
 
-### Models Used
+### Dataset Scaling
+
+### LLM Experiment
+
+#### Models Used
 
 -   **Model 1:** `microsoft/Phi-4-mini-instruct` (3.8B parameters) - via Ollama as `phi4-mini`
 -   **Model 2:** `meta-llama/Llama-3.2-3B-Instruct` (3B parameters) - via Ollama as `llama3.2:3b`
@@ -10,7 +14,7 @@
 
 ------------------------------------------------------------------------
 
-### Prompt
+#### Prompt
 
 All five queries were run using identical retrieved context (top 5 documents via `HybridRetriever`) and the same prompt template defined in `src/prompts.py` as `SYSTEM_PROMPT_V3`.
 
@@ -32,7 +36,7 @@ Mandatory rules:
 
 ------------------------------------------------------------------------
 
-### Outputs
+#### Outputs
 
 | Query | Phi-4-mini-instruct | Llama-3.2-3B-Instruct | Qwen2.5-3B |
 |------------------|------------------|------------------|------------------|
@@ -44,9 +48,9 @@ Mandatory rules:
 
 ------------------------------------------------------------------------
 
-### Key Observations
+#### Key Observations
 
-#### 1. Response Style
+##### Response Style
 
 Each model exhibited a distinct generation style that persisted across all five queries, suggesting these differences reflect fundamental tendencies of the model rather than query-specific variation.
 
@@ -58,7 +62,7 @@ Each model exhibited a distinct generation style that persisted across all five 
 
 ---
 
-#### 2. Relevance and Query Interpretation
+##### Relevance and Query Interpretation
 
 All three models successfully grounded their recommendations in the retrieved product context and cited ASINs in most responses. However, meaningful differences emerged when queries were ambiguous or when retrieved documents were remotely related to the user's query.
 
@@ -70,7 +74,7 @@ All three models successfully grounded their recommendations in the retrieved pr
 
 ---
 
-#### 3. Instruction Following and Consistency
+##### Instruction Following and Consistency
 
 Adherence to the mandatory rules in `SYSTEM_PROMPT_V3` varied noticeably across models, particularly for formatting constraints and citation requirements.
 
@@ -82,7 +86,7 @@ Adherence to the mandatory rules in `SYSTEM_PROMPT_V3` varied noticeably across 
 
 ---
 
-#### 4. Overall Model Ranking for This Task
+- Overall Model Ranking for This Task
 
 Based on the observations above, the three models can be ranked for this specific RAG-based product recommendation task as follows:
 
@@ -95,7 +99,20 @@ Based on the observations above, the three models can be ranked for this specifi
 All three models are competitive for a 3B parameter class, and the differences may narrow with prompt tuning or fine-tuning on domain-specific data. However, for out-of-the-box performance under `SYSTEM_PROMPT_V3`, Qwen2.5-3B offers the best balance of quality, consistency, and instruction adherence.
 
 ------------------------------------------------------------------------
-## 4: Cloud Deployment Plan
+
+## Step 3: Improve Documentation and Code Quality
+
+### Documentation Update
+
+The `README.md` file was updated to make the repository cleaner and more professional. Key improvements include:
+
+- Added shields.io badges for Python version, Streamlit, FAISS, and MIT License
+- Added a Table of Contents with anchor links for easier navigation
+- Added a Usage Examples section with five distinct query types mapped to their expected best retrieval methodSonnet 4.6Claude is AI and can make mistakes. Please double-check responses.
+
+### Code Quality Changes
+
+## Step 4: Cloud Deployment Plan
 
 Deploying our Amazon Product Retrieval app on AWS would require: 
 
