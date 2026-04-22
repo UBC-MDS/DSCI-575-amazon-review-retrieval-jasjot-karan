@@ -22,7 +22,7 @@ A production-style information retrieval system built on Amazon Electronics revi
 
 ## RAG Pipeline Workflow 
 
-The pipeline has three stages: **Retrieval** (semantic similarity search over FAISS), **Context & Prompt Construction** (formatting retrieved products into a structured prompt for the LLM), and **Generation** (grounded answer from phi4-mini via Ollama).
+The pipeline has three stages: **Retrieval** (semantic similarity search over FAISS), **Context & Prompt Construction** (formatting retrieved products into a structured prompt for the LLM), and **Generation** (grounded answer from qwen2.5 via Ollama).
 
 ```mermaid
 flowchart TD
@@ -38,7 +38,7 @@ flowchart TD
     G --> H[build_context<br/>combine top k products into a string]
     H --> I[build_prompt<br/>system prompt + product context + user query]
     
-    I --> J[phi4-mini LLM model via Ollama<br/>temperature=0.0]
+    I --> J[qwen2.5 LLM model via Ollama<br/>temperature=0.0]
     J --> K[Grounded Answer with ASIN Citations]
     
     G --> L["Final Output Dict<br/>(Query + LLM Answer + Retrieved Docs + Prompt Version)"]
@@ -239,7 +239,7 @@ conda activate amazon-retrieval
 
 ### Ollama Setup (required for the RAG generation step)
 
-The LLM generation step runs **phi4-mini locally** via [Ollama](https://ollama.com). Install it before launching the app:
+The LLM generation step runs **qwen2.5 locally** via [Ollama](https://ollama.com). Install it before launching the app:
 
 #### macOS
 
@@ -260,8 +260,8 @@ Then start the Ollama server and pull the model:
 
 ```bash
 ollama serve          # start the local server (leave this running)
-ollama pull phi4-mini # download the model (~2 GB, one-time)
-ollama list           # confirm phi4-mini appears in the list
+ollama pull qwen2.5 # download the model (~2 GB, one-time)
+ollama list           # confirm qwen2.5 appears in the list
 ```
 
 ### Environment variables
