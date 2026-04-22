@@ -269,7 +269,7 @@ Then start the Ollama server and pull the model:
 
 ```bash
 ollama serve          # start the local server (leave this running)
-ollama pull qwen2.5 # download the model (~2 GB, one-time)
+ollama pull qwen2.5 # download the model (~4.7 GB, one-time)
 ollama list           # confirm qwen2.5 appears in the list
 ```
 
