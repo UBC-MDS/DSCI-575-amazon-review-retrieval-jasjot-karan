@@ -122,7 +122,6 @@ flowchart TD
 │   ├── tools.py                # Tavily web search tool integration
 │   ├── retrieval_metrics.py    # Retrieval evaluation metrics
 │   └── utils.py                # Tokenization, I/O, and shared utilities
-└── environment.yml             # Conda environment specification
 ├── LICENSE                     # MIT License
 ├── README.md                   # Project overview and setup instructions
 └── environment.yml             # Conda environment specification
