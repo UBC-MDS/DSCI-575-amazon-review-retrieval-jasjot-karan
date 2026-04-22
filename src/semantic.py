@@ -279,13 +279,18 @@ def run_semantic_search(
     max_rows: int | None = None, 
     verbose: bool = False
 ):
+    """
+    Top-level entry point for semantic search. Loads or builds the FAISS index
+    and metadata, loads the sentence transformer model, and returns the top_k
+    most semantically similar products to the query.
+    """
     index_path = (
-        f"{DATA_DIR}/faiss_index_{max_rows}.index"
+        DATA_DIR / f"faiss_index_{max_rows}.index"
         if max_rows is not None else FAISS_INDEX_PATH
     )
 
     metadata_path = (
-        f"{DATA_DIR}/metadata_rows_{max_rows}.pkl"
+        DATA_DIR / f"metadata_rows_{max_rows}.pkl"
         if max_rows is not None else METADATA_PATH
     )
 

@@ -56,6 +56,20 @@ def build_prompt(
         context,
         prompt_version = "V1"
 ) -> tuple[str, str]:
+    """
+    Constructs a (system_prompt, user_message) tuple for the given prompt version.
+
+    Arguments:
+        query (str): The user's search query.
+        context (str): Retrieved product context string to include in the prompt.
+        prompt_version (str): Which system prompt to use ('V1', 'V2', or 'V3'). Defaults to 'V1'.
+
+    Returns:
+        tuple[str, str]: A (system_prompt, user_message) tuple ready to pass to the LLM.
+
+    Raises:
+        ValueError: If prompt_version is not one of the supported versions.
+    """
     if prompt_version not in PROMPT_VERSION_MAP:
         raise ValueError(
             f"Unknown prompt version: {prompt_version}."

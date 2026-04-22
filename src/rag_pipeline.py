@@ -68,7 +68,7 @@ class SemanticRetriever:
         - self.embedding_model: set to 'all-MiniLM-L6-v2 model' embedding model from load_sentence_transformer_smodel() in semantic.py
     '''
     def __init__(self):
-        # initialize the retriever when it is called by loading or building our semantic artifacts needed for semantic retrieval (FAISS index and metadata rows for output)
+        '''Loads or builds the FAISS index, metadata rows, and sentence transformer model.'''
         # this avoids re-loading our FAISS index and metadata rows, along with our sentece transformer "all-MiniLM-L6-v2" on each call to the Retiever so the FAISS Index, metadata rows, and sentence transformer are loaded for subsequent calls
         self.faiss_index, self.metadata_rows =  load_or_build_semantic_artifacts(
             corpus_path = CORPUS_PATH,
@@ -101,7 +101,7 @@ class BM25Retriever:
         - self.metadata_rows: product metadata rows, where each row is a dictionary containing (product attribute: value). Index positions of the top k scores in bm25_index will be mapped to the top k index positions in metadata_rows to get the product metadata for top k retrieved results.
     '''
     def __init__(self):
-        # initialize the retriever when it is called by loading or building our semantic artifacts needed for BM25 retrieval so they do not have to be re-called constantly after a BM25 Retriever instance is initialized.
+        '''Loads or builds the BM25 index and metadata rows.'''
         self.bm25_index, self.bm25_metadata_rows = load_or_build_search_artifacts(
             corpus_path = CORPUS_PATH,
             tokenized_path = TOKENIZED_PATH,
@@ -129,6 +129,7 @@ class HybridRetriever:
     Instantiated with: BM25Retriever and SemanticRetriever objects that each include (bm25_index and bm25_metadata_rows attributes) and (faiss_index, semantic_metadata_rows, and model) attrbibutes to pass precomputed objects into the hybrid_search() functions 
     '''
     def __init__(self):
+        '''Instantiates BM25Retriever and SemanticRetriever, loading all artifacts for both methods.'''
         self.bm25_retriever = BM25Retriever()
         self.semantic_retriever = SemanticRetriever()
 
@@ -148,15 +149,14 @@ class HybridRetriever:
                 rrf_k = rrf_k # RRF smoothing constant
         )
 class RAGPipeline: 
-    def __init__(self, retriever, model = "phi4-mini", use_tools: bool = False):
+    def __init__(self, retriever, model = "qwen2.5", use_tools: bool = False):
+        '''Initializes the RAG pipeline with a retriever, Ollama model, and optional Tavily web search.'''
         self.retriever =  retriever
         self.model = model
         self.use_tools = use_tools
 
     def _should_use_web_search(self, query: str) -> bool:
-        '''
-        Helper function that uses LLM (same model: phi4-mini) as a judge/router to determine whether the query needs information from the web or not. 
-        '''
+        '''Helper function that uses LLM (same model: qwen2.5) as a judge/router to determine whether the query needs information from the web or not.'''
         SYSTEM_PROMPT = """
             You are a routing assistant. Decide if a query needs live web search to answer accurately.\n
             Reply with ONLY 'yes' or 'no'.\n\n
@@ -188,6 +188,7 @@ class RAGPipeline:
         return response.message.content.strip().lower() == "yes"
 
     def invoke(self, query: str, top_k: int, system_prompt_version: str = 'V3'):
+        '''Retrieves context, optionally augments with web search, and returns the LLM-generated answer.'''
         docs = self.retriever.invoke(query = query, top_k = top_k)
         context = build_context(docs)
 
@@ -206,8 +207,8 @@ class RAGPipeline:
             prompt_version = system_prompt_version
         )
 
-        # call the phi4-mini model using ollama
-        # Referenced Ollama docs: https://ollama.com/library/phi4-mini
+        # call the qwen2.5 model using ollama
+        # Referenced Ollama docs: https://ollama.com/library/qwen2.5
         response = chat(
             model = self.model,
             messages = [
@@ -231,7 +232,7 @@ class RAGPipeline:
 if __name__ == "__main__":
     semantic_retriever = SemanticRetriever()
     hybrid_retriever = HybridRetriever()
-    rag_pipeline = RAGPipeline(retriever = hybrid_retriever, model = "phi4-mini", use_tools = True)
+    rag_pipeline = RAGPipeline(retriever = hybrid_retriever, model="qwen2.5", use_tools = True)
 
     # test query for our experiment
     query = 'Mechanical Keyboard that is good for coding'
