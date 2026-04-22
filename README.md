@@ -364,12 +364,13 @@ Once the app is running, try the following example queries to see how each retri
 ## User Feedback & Evaluation
  
 ### Relevance Feedback
- 
-Every result card in the app includes a thumbs up (relevant) / thumbs down (not relevant) button. Clicking either appends a record to `feedback/user_feedback.csv` with the following fields:
- 
-- `query`, `search_type`, `rank`, `score`
-- `parent_asin`, `product_title`, `store`, `price`, `average_rating`
-This data can be used to compute precision@k and other IR metrics offline.
+
+Every result card in the **Search Results** tab includes a 👍 / 👎 button pair below it. Clicking either button immediately appends a record to `feedback/user_feedback.csv` with the following fields:
+
+- `timestamp_utc`, `query`, `search_type`, `rank`, `score`, `feedback` (`"up"` or `"down"`)
+- `parent_asin`, `product_title`, `main_category`, `average_rating`, `rating_number`, `review_count`, `review_text_200`
+
+Each button has a unique key scoped to the search type, query, rank, and product ASIN, so feedback for different results is always recorded independently. The CSV is created automatically on first feedback submission and appended to on every subsequent click. This data can be used to compute precision@k and other IR metrics offline.
  
 ### Qualitative Evaluation
  
