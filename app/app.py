@@ -82,7 +82,7 @@ def get_pipeline():
     '''Initializes and caches the HybridRetriever-backed RAGPipeline for the Streamlit session.'''
     retriever = HybridRetriever()
     # Create the pipeline with phi4-mini and web tools enabled
-    return RAGPipeline(retriever=retriever, model="phi4-mini", use_tools=True)
+    return RAGPipeline(retriever=retriever, model="qwen2.5", use_tools=True)
 
 rag_pipe = get_pipeline()
 
