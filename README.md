@@ -120,7 +120,6 @@ flowchart TD
 |   ├── rag_pipeline.py         # RAG pipeline with hybrid retrieval and qwen2.5 generation
 |   ├── prompts.py              # System prompt templates for LLM grounding
 │   ├── tools.py                # Tavily web search tool integration
-│   ├── retrieval_metrics.py    # Retrieval evaluation metrics
 │   └── utils.py                # Tokenization, I/O, and shared utilities
 ├── LICENSE                     # MIT License
 ├── README.md                   # Project overview and setup instructions
