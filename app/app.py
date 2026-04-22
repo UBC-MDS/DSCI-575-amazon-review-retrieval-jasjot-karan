@@ -4,6 +4,7 @@ Integrated with RAGPipeline for qwen2.5 generation and Tavily web tools.
 '''
 import streamlit as st
 import sys
+import os
 import csv
 from pathlib import Path
 from datetime import datetime, timezone
@@ -76,6 +77,58 @@ html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
 """
 st.markdown(AMAZON_CSS, unsafe_allow_html=True)
 
+# USER FEEDBACK (thumbs up or thumbs down) STORAGE SETUP
+# set up filepaths for where user feedback will be
+BASE_DIR = Path(__file__).resolve().parent.parent
+FEEDBACK_DIR = BASE_DIR / "feedback"
+
+# make feedback directory if it does not already exist
+FEEDBACK_DIR.mkdir(parents = True, exist_ok = True)
+
+# set one canonical source of truth for raw data
+FEEDBACK_PATH = FEEDBACK_DIR / "user_feedback.csv"
+
+def save_feedback(
+        query: str,
+        search_type: str,
+        rank: int,
+        score: float,
+        row: dict,
+        feedback: str
+) -> None:
+    '''
+    Saves one user query (feedback event) to a single master CSV.
+    Referenced the Python docs for DictWriter for the below: https://docs.python.org/3/library/csv.html#csv.DictWriter
+    '''
+    record = {
+        "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+        "query": query,
+        "search_type": search_type,
+        "rank": rank,
+        "feedback": feedback,
+        "score": round(float(score), 6),
+        "parent_asin": row.get("parent_asin"),
+        "product_title": row.get("product_title"),
+        "main_category": row.get("main_category"),
+        "average_rating": row.get("average_rating"),
+        "rating_number": row.get("rating_number"),
+        "review_count": row.get("review_count"),
+        "review_text_200": row.get("review_text_200"),
+    }
+
+    file_exists = FEEDBACK_PATH.exists()
+
+    # if the feedback file already exists, append the current dict/record to the file
+    with open(FEEDBACK_PATH, mode = "a", newline = "", encoding = "utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames = record.keys())
+
+        # if the file does not exist/ is empty, write the header as well
+        if not file_exists:
+            writer.writeheader()
+
+        # append the row to the file
+        writer.writerow(record)
+
 # INITIALIZATION
 @st.cache_resource
 def get_pipeline():
@@ -96,7 +149,7 @@ top_k = st.slider("Context Documents", 1, 10, 5)
 # MODE TABS
 tab_search, tab_rag = st.tabs(["🔍 Search Results", "🤖 RAG Answer"])
 
-def render_result_card(rank, row, score, is_source=False):
+def render_result_card(rank, row, score, query="", search_type="", is_source=False):
     '''Renders a styled HTML product card with title, rating, and review snippet in the Streamlit UI.'''
     title = row.get("product_title", "N/A")
     rating = row.get("average_rating", "N/A")
@@ -115,6 +168,38 @@ def render_result_card(rank, row, score, is_source=False):
         </div>
     """, unsafe_allow_html=True)
 
+    if not is_source and query and search_type:
+        # set up unique button keys for every card/widget, since each widget (each thumbs up or down) for every result needs a unique key
+        button_prefix = f"{search_type}_{query}_{rank}_{row.get('parent_asin', 'unknown')}"
+
+        st.markdown("**Was this result relevant?**")
+
+        col_up, col_down, _ = st.columns([1, 1, 6])
+
+        with col_up:
+            if st.button("👍 Yes", key = f"{button_prefix}_up"):
+                save_feedback(
+                    query = query,
+                    search_type = search_type,
+                    rank = rank,
+                    score = score,
+                    row = row,
+                    feedback = "up"
+                )
+                st.success("Thanks! 👍")
+
+        with col_down:
+            if st.button("👎 No", key = f"{button_prefix}_down"):
+                save_feedback(
+                    query = query,
+                    search_type = search_type,
+                    rank = rank,
+                    score = score,
+                    row = row,
+                    feedback = "down"
+                )
+                st.success("Got it, thanks 👎")
+
 # SEARCH TAB
 with tab_search:
     if query:
@@ -123,14 +208,14 @@ with tab_search:
             results = rag_pipe.retriever.invoke(query, top_k=top_k)
             if results:
                 for i, (row, score) in enumerate(results, 1):
-                    render_result_card(i, row, score)
+                    render_result_card(i, row, score, query=query, search_type="hybrid")
             else:
                 st.warning("No products matched your query.")
 
 # RAG TAB
 with tab_rag:
     if query:
-        with st.spinner("Phi4-mini is thinking..."):
+        with st.spinner("qwen2.5 is thinking..."):
             # Invoke the full RAG pipeline
             response = rag_pipe.invoke(query, top_k=top_k, system_prompt_version='V3')
             
