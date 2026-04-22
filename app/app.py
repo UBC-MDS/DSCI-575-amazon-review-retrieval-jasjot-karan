@@ -1,6 +1,6 @@
 '''
 UI for the retrieval application. 
-Integrated with RAGPipeline for phi4-mini generation and Tavily web tools.
+Integrated with RAGPipeline for qwen2.5 generation and Tavily web tools.
 '''
 import streamlit as st
 import sys
@@ -81,14 +81,14 @@ st.markdown(AMAZON_CSS, unsafe_allow_html=True)
 def get_pipeline():
     '''Initializes and caches the HybridRetriever-backed RAGPipeline for the Streamlit session.'''
     retriever = HybridRetriever()
-    # Create the pipeline with phi4-mini and web tools enabled
+    # Create the pipeline with qwen2.5 and web tools enabled
     return RAGPipeline(retriever=retriever, model="qwen2.5", use_tools=True)
 
 rag_pipe = get_pipeline()
 
 # UI HEADER
 st.markdown('<h1 style="color:white; margin-bottom:0;">Amazon Electronics RAG</h1>', unsafe_allow_html=True)
-st.markdown('<p style="color:#9aa4ad; margin-bottom:2rem;">Powered by phi4-mini & Hybrid Search</p>', unsafe_allow_html=True)
+st.markdown('<p style="color:#9aa4ad; margin-bottom:2rem;">Powered by qwen2.5 & Hybrid Search</p>', unsafe_allow_html=True)
 
 query = st.text_input("Search or ask a question...", placeholder="e.g. Best noise cancelling headphones for under $200")
 top_k = st.slider("Context Documents", 1, 10, 5)

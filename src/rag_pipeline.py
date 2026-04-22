@@ -156,7 +156,7 @@ class RAGPipeline:
         self.use_tools = use_tools
 
     def _should_use_web_search(self, query: str) -> bool:
-        '''Helper function that uses LLM (same model: phi4-mini) as a judge/router to determine whether the query needs information from the web or not.'''
+        '''Helper function that uses LLM (same model: qwen2.5) as a judge/router to determine whether the query needs information from the web or not.'''
         SYSTEM_PROMPT = """
             You are a routing assistant. Decide if a query needs live web search to answer accurately.\n
             Reply with ONLY 'yes' or 'no'.\n\n
@@ -207,8 +207,8 @@ class RAGPipeline:
             prompt_version = system_prompt_version
         )
 
-        # call the phi4-mini model using ollama
-        # Referenced Ollama docs: https://ollama.com/library/phi4-mini
+        # call the qwen2.5 model using ollama
+        # Referenced Ollama docs: https://ollama.com/library/qwen2.5
         response = chat(
             model = self.model,
             messages = [
