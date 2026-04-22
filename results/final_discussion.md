@@ -162,9 +162,10 @@ the saved file on disk in chunks instead of holding the full dataset in RAM at o
 
 The `README.md` file was updated to make the repository cleaner and more professional. Key improvements include:
 
-- Added shields.io badges for Python version, Streamlit, FAISS, and MIT License
-- Added a Table of Contents with anchor links for easier navigation
-- Added a Usage Examples section with five distinct query types mapped to their expected best retrieval methodSonnet 4.6Claude is AI and can make mistakes. Please double-check responses.
+- Added shields.io badges for Python version, Streamlit, FAISS, and MIT License.
+- Added a Table of Contents with anchor links for easier navigation.
+- Added a Usage Examples section with five distinct query types mapped to their expected best retrieval method.
+- Updated the Project Structure section with an annotated file tree describing the purpose of each file and directory.
 
 ### Code Quality Changes
 
