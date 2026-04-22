@@ -107,14 +107,24 @@ flowchart TD
 ├── feedback/
 │   └── user_feedback.csv       # Persisted user relevance feedback
 ├── notebooks/
-│   └── milestone1_exploration.ipynb   # EDA and preprocessing notebook
+│   ├── milestone1_exploration.ipynb   # EDA and preprocessing notebook
+|   └── milestone2_rag.ipynb    # Semantic, BM25, and hybrid retriever experimentation notebook
 ├── results/
-│   └── milestone1_discussion.md       # Qualitative evaluation write-up
+│   ├── milestone1_discussion.md       # Qualitative evaluation write-up
+|   ├── milestone2_discussion.md       # Model selection and system prompt evaluation write-up
+|   └── final_discussion.md            # LLM comparison, tool use, scaling, and deployment write-up
 ├── src/
 │   ├── bm25.py                 # BM25 index construction and search
 │   ├── semantic.py             # FAISS index construction and semantic search
 │   ├── hybrid.py               # RRF-based hybrid search
+|   ├── rag_pipeline.py         # RAG pipeline with hybrid retrieval and qwen2.5 generation
+|   ├── prompts.py              # System prompt templates for LLM grounding
+│   ├── tools.py                # Tavily web search tool integration
+│   ├── retrieval_metrics.py    # Retrieval evaluation metrics
 │   └── utils.py                # Tokenization, I/O, and shared utilities
+└── environment.yml             # Conda environment specification
+├── LICENSE                     # MIT License
+├── README.md                   # Project overview and setup instructions
 └── environment.yml             # Conda environment specification
 ```
 
