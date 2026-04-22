@@ -101,7 +101,7 @@ All three models are competitive for a 3B parameter class, and the differences m
 
 ------------------------------------------------------------------------
 
-## Step 2: Tool Integration Examples
+## Step 2: Tool Integration Examples & Dataset Scaling
 
 The web search tool was used on the 3 queries below and produced more relevant, current responses compared to running the pipeline without web search. The web search tool is triggered by an LLM-based router (phi4-mini) that evaluates each user query itself and decides whether live web data is needed. If the user query mentions current stock availability, prices, where to buy the item, or recent news and updates about the product, the router outputs "yes" and Tavily web search is called, appending the web search results to the local retrieval context before the final answer is generated. If the query is about product reviews, feature comparisons, or general recommendations, the router outputs "no" and only the local retrieval is used, which avoids unneeded web calls that would increase inference time for users.
 
@@ -134,6 +134,28 @@ The web search tool was used on the 3 queries below and produced more relevant, 
   iiexcel on Amazon for $9.99, and an an incompatible product ([ASIN: B09Q35KXVS]). The LLM did honestly mention that it could not actually answer the question and outputted that the retrieved products "do not match the Samsung Galaxy Buds 3 Pro" and that the local product corpus does not provide Canadian availability information.
 - **With tool:** Tavily web search added Walmart.ca as a Canadian retailer that carries the earbuds, but the response was still not trustworthy as it did not include current pricing or stock availability in Canada from Walmart or any other site for the actual Galaxy Buds 3 Pro. The first product returned in the response with web search was also still the irrelevant $9.99 accessory (not the actual earbuds) that was retrieved directly from the local product metadata corpus.
 - **Conclusion with Web Search:** Web search gave us a partial imporvement. Tavily added one Canadian retailer (Walmart) that the static corpus could not add since it is US based, but the overall response was still weak because the main product outputted as a recommendation was still from our local Amazon product metadata context and was not related to the user query about the actual product directly. Therefore, we saw that when local product retrieval from the static corpus returns low-quality matches, final output from the LLM can let that dominate and not include much of the web search's context.  
+
+### Dataset Scaling 
+
+#### Number of Products Used
+
+The pipeline scales to and contains **200,000 products**, controlled by the constant variable: `MAX_PRODUCTS = 200_000` at the top of `notebooksmilestone1_exploration.ipynb`. 
+
+#### Sampling Strategy and Engineering Decisions
+
+The raw Amazon Electronics dataset is too big for a standard laptop, since `meta_Electronics.jsonl` has ~1.6M products and `Electronics.jsonl` has ~18.3M reviews. Loading both into memory all at once with pandas would cause out of memory (OOM) errors. To load all of the rows in each dataset for downstream use without cloud compute, we used the following engineering design decisions:
+
+**Polars lazy evaluation with streaming:** Both files are opened with 
+`pl.scan_ndjson()`, that build a lazy query plan only instead of loading the entire datasets into memory. The final corpus used for retrieval is written using `sink_parquet()`, which automatically streams results to 
+the saved file on disk in chunks instead of holding the full dataset in RAM at once. This lazy loading with Polars allows the pipeline to be runnable on a standard laptop.
+
+**Limiting sampling by `parent_asin`.** We select the first 200K distinct `parent_asin` (product ID) values from the product metadata file, then filter the 18.3M review dataset down using a semi-join on that ASIN set. This makes sure that we limit the number of reviews to only contain reviews of the sampled 200K products.
+
+**Review aggregation.** We do not store every single review, as this would result in having multiple rows for each product, if each product has multiple reviews, which can result in duplicate output for our actual application. Therefore, we group the reviews by `parent_asin` and aggregate each product's review into two fields: `all_review_titles` (concatenated titles) and `review_text_200` (first 200 characters of combined review text).
+
+**Left-join to keep products without reviews.** A `left_join` on `parent_asin` when joining the reviews table to the product metadata table guarantees that there are 200K rows in the final corpus, even if there are products with no matching reviews.
+
+**Single `retrieval_text` field for retrieval.** We concatenate parent_asin, title, category, store, features, description, average rating, review titles, and the review snippet into one searchable field so downstream BM25 and FAISS retrievers can index one column per product, that contains a lot of rich metadata the user can ask about.
 
 ------------------------------------------------------------------------
 
