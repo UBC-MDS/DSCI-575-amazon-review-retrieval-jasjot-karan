@@ -381,14 +381,14 @@ This data can be used to compute precision@k and other IR metrics offline.
  
 ### Qualitative Evaluation
  
-A 30-query evaluation set (10 easy, 10 medium, 10 difficult) and a detailed comparison of BM25 vs. semantic retrieval is documented in [results/milestone1_discussion.md](results/milestone1_discussion.md).
+A 30-query evaluation set (10 easy, 10 medium, and 10 difficult) and a detailed comparison of BM25 vs. semantic retrieval is documented in [results/milestone1_discussion.md](results/milestone1_discussion.md).
  
 **Key findings:**
  
-- **BM25** excels on technical/factoid queries with exact measurements, model numbers, or brand names
-- **Semantic search** excels on intent-based natural language queries describing use cases or scenarios
-- **Hybrid (RRF)** captures the strengths of both by rewarding documents ranked highly by either method
-- Both methods degrade on complex multi-constraint queries, motivating future reranking work
+- **BM25** excels on technical/factoid queries with exact measurements, model numbers, or brand names.
+- **Semantic search** excels on intent-based natural language queries describing use cases or scenarios.
+- **Hybrid (RRF)** captures the strengths of both by rewarding documents ranked highly by either method.
+- Both BM25 and semantic search degrade on complex multi-constraint queries, motivating future reranking work.
 
 ## Authors
 
