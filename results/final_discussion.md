@@ -2,9 +2,6 @@
 
 ## Step 1: Improve Your Workflow
 
-### Dataset Scaling
-...
-
 ### LLM Experiment
 
 #### Models Used
